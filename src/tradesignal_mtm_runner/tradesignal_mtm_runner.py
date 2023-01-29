@@ -19,20 +19,19 @@ class Mtm_Runner(ITradeSignalRunner):
     3) check if stop loss/profit required -> if yes, close the trade and update trade position
     Finally, we can conclude the Pnl by adding up all the mtm
 
-    For each position,
-    mtm diff = price(t) - price(t-1)
-    mtm = mtm diff / (entry price) * 100 (normalized mtm value)
-    cum_mtm is the cumulation of mtm number up to t
-    cum_mtm += mtm
-    max_pnl = max(max_pnl, cum_mtm)
-    max_drawdown = max(max_drawdown, max_pnl - cum_mtm)
-    mark the pnl_ratio record into the time record
-
-    add up all positions at each t, 
-    mtm[t]  = sum(mtm[p,t] for all p)
-    cum_mtm[t] = sum(cum_mtm[p,t] for all p)
-
-    calculate the SHARPE ratio based on the pnl_ratio time series
+    reference: MTM calculation - https://ibkr.info/node/56
+    price diff[t] = price(t) - price(t-1)
+    For each position[p] in each candlestick[t]:
+        mtm[p][t] = price diff[t] / (entry price[p]) * 100 (normalized mtm value)
+        #cum_mtm[p][t] is the cumulation of mtm number up to t
+        cum_mtm[p][t] += mtm[p][t]
+    mtm[t] = [mtm[p] for all p]
+    cum_mtm[t] = [ cum_mtm[p][t] for all p]
+    max_pnl = max(max_pnl, cum_mtm[t])
+    max_drawdown = max(max_drawdown, max_pnl - cum_mtm[t])
+    
+    
+    calculate the SHARPE ratio based on the mtm time series
     """
 
     def __init__(self) -> None:

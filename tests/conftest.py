@@ -32,6 +32,8 @@ def get_test_descending_mkt_data() -> pd.DataFrame:
         df.set_index("timestamp", inplace=True, drop=True)
         max_inx = df["inx"].max()
         df["close"] = (max_inx - df["inx"]) * 100.00 + 1000
+
+        
         return df
 
     return _get_data
