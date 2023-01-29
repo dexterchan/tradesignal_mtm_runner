@@ -41,6 +41,7 @@ class BTree:
             return self.right.search(val)
         else:
             print(str(self.data) + ' is found')
+            return self.data #add by me, copilot missed the return
     
     def range_search(self, begin, end) -> list:
         """ range search from begin to end
@@ -63,3 +64,4 @@ class BTree:
         if self.right:
             ret.extend(self.right.range_search(begin, end))
         return ret
+
