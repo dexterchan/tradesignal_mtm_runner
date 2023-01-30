@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from .interfaces import ITradeSignalRunner
 import pandas as pd
-from models import Mtm_Result
+from models import Mtm_Result, ProxyTrade
 
 class Mtm_Runner(ITradeSignalRunner):
     """Accept buy/sell signal from Strategy
@@ -54,3 +54,10 @@ class Mtm_Runner(ITradeSignalRunner):
         _signal_dataframe["sell"] = sell_signal_dataframe["sell"]
 
         return super().calculate(symbol, buy_signal_dataframe, sell_signal_dataframe)
+    
+    def _iterate_each_timeframe_generate_trade_positions(
+        self,
+        symbol: str,
+        signal_dataframe: pd.DataFrame,
+    ) -> list[ProxyTrade]:
+        return []
