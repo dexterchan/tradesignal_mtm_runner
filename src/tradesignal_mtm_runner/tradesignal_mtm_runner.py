@@ -60,4 +60,19 @@ class Mtm_Runner(ITradeSignalRunner):
         symbol: str,
         signal_dataframe: pd.DataFrame,
     ) -> list[ProxyTrade]:
+        """_summary_
+
+        Args:
+            symbol (str): _description_
+            signal_dataframe (pd.DataFrame): _description_
+
+        Returns:
+            list[ProxyTrade]: _description_
+        """
+        # convert dataframe to numpy array in the data format of float
+        close_price = signal_dataframe["close"].to_numpy(dtype=float)
+        buy_signal = signal_dataframe["buy"].to_numpy(dtype=int)
+        sell_signal = signal_dataframe["sell"].to_numpy(dtype=int)
+        time_line = signal_dataframe.index.to_numpy(dtype="datetime64")
+
         return []

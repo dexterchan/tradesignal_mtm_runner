@@ -55,6 +55,7 @@ class ProxyTrade:
     exit_datetime: datetime = Field(default=None)
     is_closed: bool = Field(default=False)
     close_reason: Proxy_Trade_Actions = Field(default=None)
+    mtm_history: list[float] = Field(default_factory=list)
 
     @property
     def check_closed(self) -> bool:
