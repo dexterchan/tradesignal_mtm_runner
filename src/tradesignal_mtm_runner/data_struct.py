@@ -2,6 +2,12 @@ from dataclasses import dataclass
 
 #https://iq.opengenus.org/b-tree-searching-insertion/
 
+class BPlusTree:
+    def __init__(self, data):
+        self.data = data
+        self.left = None
+        self.right = None
+
 class BTree:
     def __init__(self, data):
         self.data = data
@@ -57,10 +63,12 @@ class BTree:
         # travese the whole tree to get the result
         # cost is O(n)
         ret = []
+        #print(self.data)
         if self.left:
             ret.extend(self.left.range_search(begin, end))
         if self.data >= begin and self.data <= end:
-            return [self.data]
+            print(self.data)
+            ret.append(self.data)
         if self.right:
             ret.extend(self.right.range_search(begin, end))
         return ret

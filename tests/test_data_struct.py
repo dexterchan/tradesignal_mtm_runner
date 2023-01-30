@@ -87,5 +87,7 @@ def generate_sample_bt():
 def test_btree_search(generate_sample_bt) ->None:
     bt = generate_sample_bt
 
-    print(bt.search(10))
-    print(bt.search(71))
+    # print(bt.search(10))
+    # print(bt.search(71))
+
+    print(bt.range_search(10, 50))

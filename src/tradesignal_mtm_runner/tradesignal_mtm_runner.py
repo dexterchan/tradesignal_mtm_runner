@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from .interfaces import ITradeSignalRunner
 import pandas as pd
+from models import Mtm_Result
 
 class Mtm_Runner(ITradeSignalRunner):
     """Accept buy/sell signal from Strategy
@@ -38,4 +39,18 @@ class Mtm_Runner(ITradeSignalRunner):
         super().__init__()
 
     def calculate(self, symbol: str, buy_signal_dataframe: pd.DataFrame, sell_signal_dataframe: pd.DataFrame) -> Mtm_Result:
+        """[summary]
+
+        Args:
+            symbol (str): [description]
+            buy_signal_dataframe (pd.DataFrame): [description]
+            sell_signal_dataframe (pd.DataFrame): [description]
+
+        Returns:
+            Mtm_Result: [description]
+        """
+
+        _signal_dataframe: pd.DataFrame = buy_signal_dataframe
+        _signal_dataframe["sell"] = sell_signal_dataframe["sell"]
+
         return super().calculate(symbol, buy_signal_dataframe, sell_signal_dataframe)
