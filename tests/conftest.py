@@ -2,6 +2,7 @@ import pytest
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
+from tradesignal_mtm_runner.models import PnlCalcConfig
 
 @pytest.fixture
 def get_test_ascending_mkt_data() -> pd.DataFrame:
@@ -37,5 +38,19 @@ def get_test_descending_mkt_data() -> pd.DataFrame:
         return df
 
     return _get_data
+
+from tradesignal_mtm_runner.interfaces import ITradeSignalRunner
+from tradesignal_mtm_runner.runner import Trade_Mtm_Runner
+pytest.fixture
+def get_pnl_calculator(exchange: str,
+    is_hyperopt: bool = False,
+    enable_short_position: bool = False,
+    pnl_config: PnlCalcConfig = PnlCalcConfig.get_default()) -> ITradeSignalRunner:
+
+    calculator: ITradeSignalRunner = Trade_Mtm_Runner(
+        pnl_config=pnl_config
+    )
+
+    return calculator
 
 
