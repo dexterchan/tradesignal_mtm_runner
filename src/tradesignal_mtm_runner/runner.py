@@ -20,7 +20,7 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 # Copy from Trade_Pnl_Runner_Fully_Filled
-class Trade_Mtm_Runner(ITradeSignalRunner):
+class Trade_Runner(ITradeSignalRunner):
     """Accept buy/sell signal from Strategy
     buy/sell signal should be coupled with market data from panda dataframe
     stop loss/profit checker also initialized into the runner.
@@ -137,7 +137,7 @@ class Trade_Mtm_Runner(ITradeSignalRunner):
         if is_close_position:
             old_trade: ProxyTrade = None
 
-            new_trade, old_trade = (
+            _, old_trade = (
                 trade_order_keeper.handle_sell_signal(
                     close_price=price,
                     ts=ts,
