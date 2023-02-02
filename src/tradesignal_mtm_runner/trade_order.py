@@ -1,6 +1,7 @@
 from .exceptions import UnSupportedException, MaxPositionPerSymbolExceededException, NoShortPositionAllowedException
 from datetime import datetime
-from .models import PnlCalcConfig, ProxyTrade, LongShort_Enum, Proxy_Trade_Actions
+from .models import  ProxyTrade, LongShort_Enum, Proxy_Trade_Actions
+from .config import PnlCalcConfig
 from typing import List
 import heapq
 

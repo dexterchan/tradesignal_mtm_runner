@@ -2,16 +2,17 @@
 from __future__ import annotations
 from .interfaces import ITradeSignalRunner
 import pandas as pd
-from models import ( 
+from .models import ( 
     ProxyTrade, 
-    PnlCalcConfig, 
     LongShort_Enum, 
     Proxy_Trade_Actions,
-    MIN_NUMERIC_VALUE
+    MIN_NUMERIC_VALUE,
+    Mtm_Result
 )
+from .config import PnlCalcConfig
 from .trade_order import TradeOrderSimulator
 from .exceptions import MaxPositionPerSymbolExceededException, NoShortPositionAllowedException
-from helper import ROI_Helper
+from .helper import ROI_Helper
 
 import logging
 from datetime import datetime
@@ -256,7 +257,7 @@ class Trade_Mtm_Runner(ITradeSignalRunner):
         self,
         symbol: str,
         signal_dataframe: pd.DataFrame,
-    ) -> PnlCalcConfig:
+    ) -> Mtm_Result:
         """iterate each time frame to calculate pnl and drawdown
             for each time record, up to t,  do
             1) check if stop loss/profit required -> if yes, close the trade and generate pnl
@@ -273,7 +274,7 @@ class Trade_Mtm_Runner(ITradeSignalRunner):
             signal_dataframe (pd.DataFrame): [index must be datetime, must include column: close, buy , sell ]
 
         Returns:
-            PnlResult: [description]
+            Mtm_Result: [description]
         """
         close_price = signal_dataframe["close"].to_numpy(dtype=float)
         buy_signal = signal_dataframe["buy"].to_numpy(dtype=int)
@@ -354,7 +355,7 @@ class Trade_Mtm_Runner(ITradeSignalRunner):
         )
         data_in_dict: dict = _df.to_dict(orient="list")
 
-        pnlresult: PnlCalcConfig = PnlCalcConfig(
+        pnlresult: Mtm_Result = Mtm_Result(
             pnl=pnl_cum,
             max_drawdown=max_drawdown,
             pnl_timeline=data_in_dict,
@@ -378,7 +379,7 @@ class Trade_Mtm_Runner(ITradeSignalRunner):
         symbol: str,
         buy_signal_dataframe: pd.DataFrame,
         sell_signal_dataframe: pd.DataFrame,
-    ) -> PnlCalcConfig:
+    ) -> Mtm_Result:
         """[summary]
 
         Args:
@@ -387,7 +388,7 @@ class Trade_Mtm_Runner(ITradeSignalRunner):
             sell_signal_dataframe (pd.DataFrame): [description]
 
         Returns:
-            PnlResult: [description]
+            Mtm_Result: [description]
         """
         _signal_dataframe: pd.DataFrame = buy_signal_dataframe
         _signal_dataframe["sell"] = sell_signal_dataframe["sell"]

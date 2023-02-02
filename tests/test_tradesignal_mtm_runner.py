@@ -1,13 +1,17 @@
 #!/usr/bin/env python
-from tradesignal_mtm_runner.models import ProxyTrade, PnlCalcConfig
+from __future__ import annotations
 """Tests for `tradesignal_mtm_runner` package."""
 import numpy as np
 import pytest
 from functools import reduce
 import pandas as pd
 
-from tradesignal_mtm_runner.runner import Trade_Mtm_Runner
+from tradesignal_mtm_runner.config import PnlCalcConfig
+from tradesignal_mtm_runner.models import ProxyTrade , Mtm_Result, MIN_NUMERIC_VALUE
+#from tradesignal_mtm_runner.runner import Trade_Mtm_Runner
 
+from pydantic import BaseModel, Field, validator
+#from tradesignal_mtm_runner.models import PnlCalcConfig
 
 test_exchange = "kraken"
 test_symbol = "ETHUSD"
@@ -22,8 +26,9 @@ test_cases: list = [
 ]
 DATA_DIM = 3000
 
+
 @pytest.mark.skipif("ascending" not in test_cases, reason="skipped")
-def test_trade_pnl_runner_with_ascending_data(get_test_ascending_mkt_data, get_pnl_calculator) -> None:
+def test_trade_pnl_runner_with_ascending_data(get_test_ascending_mkt_data,get_pnl_calculator) -> None:
     test_mktdata: pd.DataFrame = get_test_ascending_mkt_data(dim=DATA_DIM)
 
     # Buy at row 2 and sell at row 80
@@ -60,5 +65,84 @@ def test_trade_pnl_runner_with_ascending_data(get_test_ascending_mkt_data, get_p
     assert pos.exit_datetime == test_mktdata.iloc[80].name.to_pydatetime()
     assert pnl_result.sharpe_ratio > 0
     # logger.info(pnl_result.json)
+    pass
+
+@pytest.mark.skipif("descending" not in test_cases, reason="skipped")
+def test_trade_pnl_runner_with_descending_data(get_test_descending_mkt_data,get_pnl_calculator) -> None:
+    test_mktdata: pd.DataFrame = get_test_descending_mkt_data(dim=DATA_DIM)
+
+    # Buy at row 2 and sell at row 80
+    buy_signal = test_mktdata.copy()
+    buy_signal["buy"] = np.where(test_mktdata["inx"] == 2, 1, np.nan)
+    sell_signal = test_mktdata.copy()
+    sell_signal["sell"] = np.where(test_mktdata["inx"] == 80, 1, np.nan)
+
+    pnl = (
+        test_mktdata.iloc[80]["close"] - test_mktdata.iloc[2]["close"]
+    ) / test_mktdata.iloc[2]["close"]
+
+    pnl_runner = get_pnl_calculator(
+        exchange=test_exchange,
+        enable_short_position=False,
+    )
+    pnl_result: Mtm_Result = pnl_runner.calculate(
+        symbol=test_symbol,
+        buy_signal_dataframe=buy_signal,
+        sell_signal_dataframe=sell_signal,
+    )
+    assert pnl_result.pnl == pnl, "pnl not consistent in Buy at 2 and sell at 80"
+    assert pnl_result.max_drawdown != 0, "max drawdown should not be 0"
+    assert (
+        reduce(lambda x, y: x + y, pnl_result.pnl_timeline["pnl_ratio"])
+        == pnl
+        == pnl_result.pnl
+    )
+    assert pnl_result.sharpe_ratio > MIN_NUMERIC_VALUE  # float("-inf")
+
+@pytest.mark.skipif("take_profit" not in test_cases, reason="skipped")
+def test_trade_pnl_runner_with_take_profit(get_test_ascending_mkt_data, get_pnl_calculator) -> None:
+    test_mktdata: pd.DataFrame = get_test_ascending_mkt_data(dim=DATA_DIM)
+    # print(test_mktdata)
+    # Buy at row 2 and sell at row 80
+    buy_signal = test_mktdata.copy()
+    buy_signal["buy"] = np.where(test_mktdata["inx"] == 2, 1, np.nan)
+    sell_signal = test_mktdata.copy()
+    sell_signal["sell"] = np.where(test_mktdata["inx"] == 80, 1, np.nan)
+    pnl_without_take_profit = (
+        test_mktdata.iloc[80]["close"] - test_mktdata.iloc[2]["close"]
+    ) / test_mktdata.iloc[2]["close"]
+
+    buy_price = buy_signal[buy_signal["buy"] == 1]["close"].values[0]
+    close_price_without_take_profit = sell_signal[sell_signal["sell"] == 1][
+        "close"
+    ].values[0]
+    profit_pct: float = 10.0
+    take_profit_price = buy_price * (1 + profit_pct / 100.00)
+    # logger.debug(f"Planned Pnl: buy_price:{buy_price} - take_profit:{take_profit_price}")
+
+    pnlconfig = PnlCalcConfig.get_default()
+    pnlconfig.roi[0] = profit_pct / 100
+    pnl_runner = get_pnl_calculator(
+        exchange=test_exchange, enable_short_position=False, pnl_config=pnlconfig
+    )
+    pnl_result: Mtm_Result = pnl_runner.calculate(
+        symbol=test_symbol,
+        buy_signal_dataframe=buy_signal,
+        sell_signal_dataframe=sell_signal,
+    )
+    # logger.debug(f"test Pnl: pnl:{pnl} - {max_dd}")
+    assert profit_pct / 100 <= pnl_result.pnl < pnl_without_take_profit
+    assert (
+        close_price_without_take_profit
+        >= pnl_runner.trade_order_keeper_map[test_symbol]
+        .archive_long_positions_list[-1]
+        .exit_price
+        >= take_profit_price
+    )
+    assert (
+        reduce(lambda x, y: x + y, pnl_result.pnl_timeline["pnl_ratio"])
+        == pnl_result.pnl
+    )
+    assert pnl_result.sharpe_ratio > 0
     pass
 
