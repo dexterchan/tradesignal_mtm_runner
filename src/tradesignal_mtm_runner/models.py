@@ -17,12 +17,21 @@ class LongShort_Enum(str, Enum):
     LONG = "LONG"
     SHORT = "SHORT"
 
+class Buy_Sell_Action_Enum(str, Enum):
+    BUY = "B"
+    SELL = "S"
+    HOLD = "H"
+
+
 class Proxy_Trade_Actions(str, Enum):
     SIGNAL = "SIGNAL"
     TAKE_PROFIT = "TAKE_PROFIT"
     STOP_LOSS = "STOP_LOSS"
 
-
+class Inventory_Mode(str, Enum):
+    LIFO = "L"
+    FIFO = "F"
+    WORST_PRICE = "W"
 
 class Mtm_Result(BaseModel):
     """ Class containing Mtm Result
@@ -62,6 +71,7 @@ class ProxyTrade(BaseModel):
     is_closed: bool = Field(default=False)
     close_reason: Proxy_Trade_Actions = Field(default=None)
     mtm_history: list[float] = Field(default_factory=list)
+    inventory_mode:Inventory_Mode = Field(default=Inventory_Mode.WORST_PRICE)
 
     @property
     def check_closed(self) -> bool:
@@ -124,9 +134,7 @@ class ProxyTrade(BaseModel):
 
     def __lt__(self, other: ProxyTrade):
         """Comparator to sort the order of trade by entry price
-            For Long direction, we pick the trade having largest entry price for closing or stop loss
-            For Short direction, we pick the trade having smallest entry price for closing or stop loss
-
+            
         Args:
             other (ProxyTrade): [description]
 
@@ -136,9 +144,18 @@ class ProxyTrade(BaseModel):
         Returns:
             [type]: [description]
         """
-        if self.direction != other.direction:
-            raise Exception("Trade comparison failure... direction not matching")
-        if self.direction == LongShort_Enum.LONG:
-            return self.entry_price > other.entry_price
-        else:
-            return self.entry_price < other.entry_price
+        if self.inventory_mode == Inventory_Mode.WORST_PRICE:
+            # For Long direction, we pick the trade having largest entry price for closing or stop loss
+            # For Short direction, we pick the trade having smallest entry price for closing or stop loss
+            if self.direction != other.direction:
+                raise Exception("Trade comparison failure... direction not matching")
+            if self.direction == LongShort_Enum.LONG:
+                return self.entry_price > other.entry_price
+            else:
+                return self.entry_price < other.entry_price
+        elif self.inventory_mode == Inventory_Mode.FIFO:
+            #First in first out
+            return self.entry_datetime < self.entry_datetime
+        elif self.inventory_mode == Inventory_Mode.LIFO:
+            #Last in First out
+            return self.entry_datetime > self.entry_datetime

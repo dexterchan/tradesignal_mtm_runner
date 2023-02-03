@@ -17,6 +17,7 @@ test_cases: list = [
     "ascending_buy_3_signals_sell_1_signal",
 ]
 DATA_DIM = 200
+DATA_MOVEMENT = 100
 import logging
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,7 @@ def get_pnl_calculator():
 
 @pytest.mark.skipif("ascending" not in test_cases, reason="skipped")
 def test_trade_pnl_runner_with_ascending_data(get_test_ascending_mkt_data,get_pnl_calculator) -> None:
-    test_mktdata: pd.DataFrame = get_test_ascending_mkt_data(dim=DATA_DIM)
+    test_mktdata: pd.DataFrame = get_test_ascending_mkt_data(dim=DATA_DIM, step=DATA_MOVEMENT)
     # Buy at row 2 and sell at row 80
     buy_signal = test_mktdata.copy()
     buy_signal["buy"] = np.where(test_mktdata["inx"] == 2, 1, np.nan)
@@ -57,4 +58,9 @@ def test_trade_pnl_runner_with_ascending_data(get_test_ascending_mkt_data,get_pn
         buy_signal_dataframe=buy_signal,
         sell_signal_dataframe=sell_signal,
     )
-    print(_price_movement)
+    
+    for i, p in enumerate(_price_movement["price_movement"][1:]):
+        assert p == DATA_MOVEMENT
+        
+
+

@@ -61,7 +61,7 @@ class Trade_Mtm_Runner(ITradeSignalRunner):
             f"Take profit at {self._take_profit} ; Stop Loss at {self._stop_loss}"
         )
         # Potential to support multiple symbols in the pnl run.
-        self.trade_order_keeper_map: dict[str, TradeOrderSimulator] = {}
+        self.trade_order_simulator_map: dict[str, TradeOrderSimulator] = {}
         pass
 
     
@@ -108,3 +108,40 @@ class Trade_Mtm_Runner(ITradeSignalRunner):
         _signal_dataframe["price_movement"] = _signal_dataframe["close"].diff(1)
 
         return _signal_dataframe
+
+    def _iterate_each_timeframe(self, symbol:str, signal_dataframe:pd.DataFrame) -> Mtm_Result:
+        """_summary_
+
+        Args:
+            symbol (str): _description_
+            signal_dataframe (pd.DataFrame): _description_
+
+        Returns:
+            Mtm_Result: _description_
+        """
+        close_price = signal_dataframe["close"].to_numpy(dtype=float)
+        buy_signal = signal_dataframe["buy"].to_numpy(dtype=int)
+        sell_signal = signal_dataframe["sell"].to_numpy(dtype=int)
+        time_line = signal_dataframe.index.to_numpy(dtype="datetime64")
+        price_move = signal_dataframe["price_movement"].to_numpy(dtype=float)
+
+        pnl_ts_data: dict[str, list] = {
+            "timestamp": time_line.tolist(),
+            "pnl_ratio": [0] * len(signal_dataframe),
+            "buy_signal": buy_signal.tolist(),
+            "sell_signal": sell_signal.tolist(),
+            "close_price": close_price.tolist(),
+        }
+
+        mtm_reward_history: float = 0
+        max_pnl: float = 0
+        max_drawdown: float = 0
+        _trade_order_simulator = TradeOrderSimulator(
+            symbol=symbol, pnl_config=self.pnl_config, fixed_unit=True
+        )
+        self.trade_order_simulator_map[symbol] = _trade_order_simulator
+
+
+
+
+        pass
