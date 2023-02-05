@@ -55,14 +55,14 @@ class ROI_Helper:
             )
         )
         _chk = normalized_pnl - roi_pnls
-        logger.info(_chk)
+        logger.debug(_chk)
         if len(_chk) == 0:
             return False
         else:
             if _chk.max() > 0:
-                logger.info(f"ROI helper should close positon pnl:{normalized_pnl} > roi_pnl{roi_pnls} with diff {_chk}")
+                logger.debug(f"ROI helper should close positon pnl:{normalized_pnl} > roi_pnl{roi_pnls} with diff {_chk}")
                 return True
             else:
-                logger.info(f"ROI helper ignore pnl:{normalized_pnl} > roi_pnl{roi_pnls} with diff {_chk}")
+                logger.debug(f"ROI helper ignore pnl:{normalized_pnl} > roi_pnl{roi_pnls} with diff {_chk}")
                 return False
 

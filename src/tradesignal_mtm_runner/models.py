@@ -94,6 +94,13 @@ class ProxyTrade(BaseModel):
     def calculate_pnl_normalized(self, price: float) -> float:
         return self.calculate_pnl(price=price) / self.entry_price
 
+    def calculate_mtm_normalized(self, price_diff: float) -> float:
+        if price_diff is np.nan:
+            return 0
+        mtm = price_diff if self.direction == LongShort_Enum.LONG else -price_diff
+        #return mtm
+        return mtm / self.entry_price
+
     @property
     def pnl(self) -> float:
         """calculate pnl for a closed trade

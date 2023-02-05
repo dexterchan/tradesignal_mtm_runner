@@ -43,20 +43,24 @@ class TradeBookKeeperAgent:
         self.roi_helper = ROI_Helper(pnl_config.roi)
         pass
 
-    def run_at_timestamp(self, dt: datetime, price: float, buy_sell_action:Buy_Sell_Action_Enum) -> None:
+    def run_at_timestamp(self, dt: datetime, price: float, price_diff:float, buy_sell_action:Buy_Sell_Action_Enum) -> None:
         """ Run the book keeper at a given timestamp
 
         Args:
             dt (datetime): time stamp
             price (float): price at the timestamp
+            price_diff(float): price diff = price(t) - price(t-1
             buy_sell_action (Buy_Sell_Action_Enum): Buy/Sell/Hold
         """
 
         # 1. Calculate MTM
         accumulated_mtm = 0
         for trade in (self.outstanding_long_position_list + self.outstanding_short_position_list):
-            normalized_pnl = trade.calculate_pnl_normalized(price)
-            accumulated_mtm += normalized_pnl
+            if dt<=trade.entry_datetime or (trade.exit_datetime is not None and trade.exit_datetime<dt):
+                logger.debug(f"exclude {trade.entry_datetime} <= {dt}")
+                continue
+            normalized_mtm = trade.calculate_mtm_normalized(price_diff=price_diff)
+            accumulated_mtm += normalized_mtm
         self.mtm_history["timestamp"].append(convert_datetime_to_ms(dt))
         self.mtm_history["mtm"].append(accumulated_mtm)
 
