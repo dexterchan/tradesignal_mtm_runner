@@ -54,7 +54,7 @@ class TradeBookKeeperAgent:
 
         # 1. Calculate MTM
         accumulated_mtm = 0
-        for trade in self.outstanding_long_position_list:
+        for trade in (self.outstanding_long_position_list + self.outstanding_short_position_list):
             normalized_pnl = trade.calculate_pnl_normalized(price)
             accumulated_mtm += normalized_pnl
         self.mtm_history["timestamp"].append(convert_datetime_to_ms(dt))
@@ -75,6 +75,9 @@ class TradeBookKeeperAgent:
             live_positions=self.outstanding_short_position_list,
             archive_positions=self.archive_short_positions_list,
         )
+
+        #3. Check if we need to close any position with stop/loss in each trade
+        # a. Long position
         
         pass
 

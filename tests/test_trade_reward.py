@@ -27,6 +27,11 @@ test_cases = [
     "roi_close_short_position"
 ]
 
+def calculate_pnl_from_mtm_history(trade_book_keeper_agent:TradeBookKeeperAgent) -> float:
+    mtm_history = trade_book_keeper_agent.mtm_history
+    mtm_array = np.array(mtm_history["mtm"])
+    return mtm_array.sum()
+
 @pytest.mark.skipif("roi_not_close_long_position" not in test_cases, reason="skipped")
 def test_roi_not_close_long_position(get_test_ascending_mkt_data) -> None:
     test_mktdata: pd.DataFrame = get_test_ascending_mkt_data(dim=DATA_DIM_MIN, step=DATA_MOVEMENT)
@@ -39,8 +44,7 @@ def test_roi_not_close_long_position(get_test_ascending_mkt_data) -> None:
 
     trade_book_keeper_agent : TradeBookKeeperAgent = get_trade_agent(pnl_config)
 
-    trade_book_keeper_agent.outstanding_long_position_list.append(
-        ProxyTrade(
+    p:ProxyTrade = ProxyTrade(
             symbol=test_symbol,
             entry_price=test_mktdata["close"][0],
             entry_datetime=test_mktdata.index[0],
@@ -48,7 +52,9 @@ def test_roi_not_close_long_position(get_test_ascending_mkt_data) -> None:
             direction=LongShort_Enum.LONG,
             inventory_mode=Inventory_Mode.FIFO
         )
-    )
+    trade_book_keeper_agent.outstanding_long_position_list.append(p)
+    
+
     time = test_mktdata.index[inx]
     trade_book_keeper_agent.run_at_timestamp(
         dt=time,
@@ -58,6 +64,12 @@ def test_roi_not_close_long_position(get_test_ascending_mkt_data) -> None:
     assert len(trade_book_keeper_agent.outstanding_long_position_list)==1
     assert trade_book_keeper_agent.outstanding_long_position_list[0].is_closed == False
     assert len(trade_book_keeper_agent.outstanding_short_position_list) == 0
+    #Verify Pnl
+    correct_pnl_normalized:float = p.calculate_pnl_normalized(test_mktdata["close"][inx])
+    pnl_value = calculate_pnl_from_mtm_history(trade_book_keeper_agent)
+    assert pnl_value == correct_pnl_normalized
+
+
 
 @pytest.mark.skipif("roi_close_long_position" not in test_cases, reason="skipped")
 def test_roi_close_long_position(get_test_ascending_mkt_data) -> None:
@@ -71,8 +83,7 @@ def test_roi_close_long_position(get_test_ascending_mkt_data) -> None:
 
     trade_book_keeper_agent : TradeBookKeeperAgent = get_trade_agent(pnl_config)
 
-    trade_book_keeper_agent.outstanding_long_position_list.append(
-        ProxyTrade(
+    p = ProxyTrade(
             symbol=test_symbol,
             entry_price=test_mktdata["close"][0],
             entry_datetime=test_mktdata.index[0],
@@ -80,7 +91,7 @@ def test_roi_close_long_position(get_test_ascending_mkt_data) -> None:
             direction=LongShort_Enum.LONG,
             inventory_mode=Inventory_Mode.FIFO
         )
-    )
+    trade_book_keeper_agent.outstanding_long_position_list.append(p)
     time = test_mktdata.index[inx]
     trade_book_keeper_agent.run_at_timestamp(
         dt=time,
@@ -92,6 +103,10 @@ def test_roi_close_long_position(get_test_ascending_mkt_data) -> None:
     assert trade_book_keeper_agent.archive_long_positions_list[0].close_reason == Proxy_Trade_Actions.ROI
     assert len(trade_book_keeper_agent.outstanding_short_position_list) == 0
 
+    #Verify Pnl
+    correct_pnl_normalized:float = p.calculate_pnl_normalized(test_mktdata["close"][inx])
+    pnl_value = calculate_pnl_from_mtm_history(trade_book_keeper_agent)
+    assert pnl_value == correct_pnl_normalized
     # l = [i for i in range(100)]
     # for i in l :
     #     if i==20 :
@@ -113,8 +128,7 @@ def test_roi_not_close_short_position(get_test_ascending_mkt_data) -> None:
 
     trade_book_keeper_agent : TradeBookKeeperAgent = get_trade_agent(pnl_config)
 
-    trade_book_keeper_agent.outstanding_short_position_list.append(
-        ProxyTrade(
+    p = ProxyTrade(
             symbol=test_symbol,
             entry_price=test_mktdata["close"][0],
             entry_datetime=test_mktdata.index[0],
@@ -122,7 +136,7 @@ def test_roi_not_close_short_position(get_test_ascending_mkt_data) -> None:
             direction=LongShort_Enum.SHORT,
             inventory_mode=Inventory_Mode.FIFO
         )
-    )
+    trade_book_keeper_agent.outstanding_short_position_list.append(p)
     time = test_mktdata.index[inx]
     trade_book_keeper_agent.run_at_timestamp(
         dt=time,
@@ -132,6 +146,10 @@ def test_roi_not_close_short_position(get_test_ascending_mkt_data) -> None:
     assert len(trade_book_keeper_agent.outstanding_short_position_list) == 1
     assert not trade_book_keeper_agent.outstanding_short_position_list[0].is_closed
     assert len(trade_book_keeper_agent.outstanding_long_position_list) == 0
+    #Verify Pnl
+    correct_pnl_normalized:float = p.calculate_pnl_normalized(test_mktdata["close"][inx])
+    pnl_value = calculate_pnl_from_mtm_history(trade_book_keeper_agent)
+    assert pnl_value == correct_pnl_normalized
     
 
 @pytest.mark.skipif("roi_close_short_position" not in test_cases, reason="skipped")
@@ -145,8 +163,8 @@ def test_roi_close_short_position(get_test_descending_mkt_data) -> None:
     }
 
     trade_book_keeper_agent : TradeBookKeeperAgent = get_trade_agent(pnl_config)
-    trade_book_keeper_agent.outstanding_short_position_list.append(
-        ProxyTrade(
+
+    p = ProxyTrade(
             symbol=test_symbol,
             entry_price=test_mktdata["close"][0],
             entry_datetime=test_mktdata.index[0],
@@ -154,7 +172,7 @@ def test_roi_close_short_position(get_test_descending_mkt_data) -> None:
             direction=LongShort_Enum.SHORT,
             inventory_mode=Inventory_Mode.FIFO
         )
-    )
+    trade_book_keeper_agent.outstanding_short_position_list.append(p)
     logger.info(test_mktdata["close"][inx])
     logger.info(trade_book_keeper_agent.outstanding_short_position_list[0].entry_price)
     #logger.info(test_mktdata["close"][inx] - trade_book_keeper_agent.outstanding_short_position_list[0].entry_price)
@@ -168,5 +186,9 @@ def test_roi_close_short_position(get_test_descending_mkt_data) -> None:
     assert len(trade_book_keeper_agent.outstanding_short_position_list) == 0
     assert trade_book_keeper_agent.archive_short_positions_list[0].is_closed
     assert len(trade_book_keeper_agent.outstanding_long_position_list) == 0
+    #Verify Pnl
+    correct_pnl_normalized:float = p.calculate_pnl_normalized(test_mktdata["close"][inx])
+    pnl_value = calculate_pnl_from_mtm_history(trade_book_keeper_agent)
+    assert pnl_value == correct_pnl_normalized
     pass
 
