@@ -25,8 +25,8 @@ class Buy_Sell_Action_Enum(str, Enum):
 
 class Proxy_Trade_Actions(str, Enum):
     SIGNAL = "SIGNAL"
-    TAKE_PROFIT = "TAKE_PROFIT"
     STOP_LOSS = "STOP_LOSS"
+    ROI = "ROI"
 
 class Inventory_Mode(str, Enum):
     LIFO = "L"

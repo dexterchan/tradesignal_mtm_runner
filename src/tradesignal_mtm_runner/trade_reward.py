@@ -1,8 +1,12 @@
 from __future__ import annotations
 from .config import PnlCalcConfig
-from .models import ProxyTrade, Buy_Sell_Action_Enum
+from .models import ProxyTrade, Buy_Sell_Action_Enum, Proxy_Trade_Actions
 from .helper import ROI_Helper
+from datetime import datetime
+from .utility import convert_datetime_to_ms
+import logging
 
+logger = logging.getLogger(__name__)
 class TradeBookKeeperAgent:
     """ The Book Keeper keeps all outstanding trades and archive historical trades
         It will contains two lists:
@@ -32,18 +36,18 @@ class TradeBookKeeperAgent:
         self.max_position_per_symbol = pnl_config.max_position_per_symbol
 
         self.mtm_history = {
-            "timestamp": [],
-            "mtm": []
+            "timestamp": [], #Integer in ms
+            "mtm": [] #float
         }
 
-        from .helper import ROI_Helper
+        self.roi_helper = ROI_Helper(pnl_config.roi)
         pass
 
-    def run_at_timestamp(self, timestamp: int, price: float, buy_sell_action:Buy_Sell_Action_Enum) -> None:
+    def run_at_timestamp(self, dt: datetime, price: float, buy_sell_action:Buy_Sell_Action_Enum) -> None:
         """ Run the book keeper at a given timestamp
 
         Args:
-            timestamp (int): time stamp
+            dt (datetime): time stamp
             price (float): price at the timestamp
             buy_sell_action (Buy_Sell_Action_Enum): Buy/Sell/Hold
         """
@@ -53,10 +57,48 @@ class TradeBookKeeperAgent:
         for trade in self.outstanding_long_position_list:
             normalized_pnl = trade.calculate_pnl_normalized(price)
             accumulated_mtm += normalized_pnl
-        self.mtm_history["timestamp"].append(timestamp)
+        self.mtm_history["timestamp"].append(convert_datetime_to_ms(dt))
         self.mtm_history["mtm"].append(accumulated_mtm)
 
-        # 2. Check if we need to close any position with ROI
+        # 2. Check if we need to close any position with ROI in each trade
+        # a. Long position
+        self._check_if_roi_close_position(
+            price=price,
+            dt=dt,
+            live_positions=self.outstanding_long_position_list,
+            archive_positions=self.archive_long_positions_list,
+        )
+        # b. Short position
+        self._check_if_roi_close_position(
+            price=price,
+            dt=dt,
+            live_positions=self.outstanding_short_position_list,
+            archive_positions=self.archive_short_positions_list,
+        )
+        
+        pass
 
+    def _check_if_roi_close_position(self, price: float, dt: datetime, live_positions:list[ProxyTrade], archive_positions:list[ProxyTrade]) -> None:
+       
+        """ Check if we can close the position with ROI
+
+        Args:
+            price (float): price at the timestamp
+            dt (datetime): time stamp
+            live_positions (list[ProxyTrade]): Live position list
+            archive_positions (list[ProxyTrade]): archive position list
+        """
+        for trade in live_positions:
+            cur_pnl:float = trade.calculate_pnl_normalized(price = price)
+            if self.roi_helper.can_take_profit(entry_date=trade.entry_datetime,current_date=dt, normalized_pnl=cur_pnl):
+                # Close the trade
+                logger.info(f"Close trade with ROI:{trade}")
+                trade.close_position(
+                    exit_price=price,
+                    exit_datetime=dt,
+                    close_reason=Proxy_Trade_Actions.ROI
+                )
+                archive_positions.append(trade)
+                live_positions.remove(trade)
 
         pass

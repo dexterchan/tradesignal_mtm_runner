@@ -1,6 +1,8 @@
 from tradesignal_mtm_runner.runner_mtm import Trade_Mtm_Runner
 from tradesignal_mtm_runner.config import PnlCalcConfig
 from tradesignal_mtm_runner.interfaces import ITradeSignalRunner
+
+
 import pytest
 import pandas as pd
 import numpy as np
@@ -36,6 +38,7 @@ def get_pnl_calculator():
         return calculator
     return __get_pnl_calculator
 
+
 @pytest.mark.skipif("ascending" not in test_cases, reason="skipped")
 def test_trade_pnl_runner_with_ascending_data(get_test_ascending_mkt_data,get_pnl_calculator) -> None:
     test_mktdata: pd.DataFrame = get_test_ascending_mkt_data(dim=DATA_DIM, step=DATA_MOVEMENT)
@@ -48,7 +51,7 @@ def test_trade_pnl_runner_with_ascending_data(get_test_ascending_mkt_data,get_pn
         test_mktdata.iloc[80]["close"] - test_mktdata.iloc[2]["close"]
     ) / test_mktdata.iloc[2]["close"]
 
-    pnl_calculator: ITradeSignalRunner = get_pnl_calculator(
+    pnl_calculator: Trade_Mtm_Runner = get_pnl_calculator(
         exchange=test_exchange,
         is_hyperopt=False,
         enable_short_position=False,
@@ -61,6 +64,7 @@ def test_trade_pnl_runner_with_ascending_data(get_test_ascending_mkt_data,get_pn
     
     for i, p in enumerate(_price_movement["price_movement"][1:]):
         assert p == DATA_MOVEMENT
-        
+
+    
 
 

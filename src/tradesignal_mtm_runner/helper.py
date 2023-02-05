@@ -1,7 +1,9 @@
 import numpy as np
 from datetime import datetime
 from .data_struct import IndexedList
+import logging
 
+logger = logging.getLogger(__name__)
 
 class ROI_Helper:
     def __init__(self, roi_dict: dict[int, float]) -> None:
@@ -14,7 +16,8 @@ class ROI_Helper:
     def get_all_take_profit_pnl(
         self, entry_date: datetime, current_date: datetime
     ) -> list[float]:
-        """calcualte cost is O(NlogR)
+        """ Search all ROI values < current_date - entry_date
+            calculate cost is O(NlogR)
         Args:
             entry_date (datetime): entry datetime
             current_date (datetime): current datetime
@@ -52,9 +55,14 @@ class ROI_Helper:
             )
         )
         _chk = normalized_pnl - roi_pnls
-        # logger.debug(_chk)
+        logger.info(_chk)
         if len(_chk) == 0:
             return False
         else:
-            return _chk.max() > 0
+            if _chk.max() > 0:
+                logger.info(f"ROI helper should close positon pnl:{normalized_pnl} > roi_pnl{roi_pnls} with diff {_chk}")
+                return True
+            else:
+                logger.info(f"ROI helper ignore pnl:{normalized_pnl} > roi_pnl{roi_pnls} with diff {_chk}")
+                return False
 

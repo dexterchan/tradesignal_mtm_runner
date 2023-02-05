@@ -23,7 +23,7 @@ def get_test_ascending_mkt_data() -> pd.DataFrame:
 
 @pytest.fixture
 def get_test_descending_mkt_data() -> pd.DataFrame:
-    def _get_data(dim: int = 10):
+    def _get_data(dim: int = 10, step:int=100):
         n = datetime.now()
         inx = [i for i in range(dim)]
         timestamp = [n + timedelta(minutes=i) for i in range(dim)]
@@ -32,7 +32,7 @@ def get_test_descending_mkt_data() -> pd.DataFrame:
         df = pd.DataFrame(data=n_data.transpose(), columns=["timestamp", "inx"])
         df.set_index("timestamp", inplace=True, drop=True)
         max_inx = df["inx"].max()
-        df["close"] = (max_inx - df["inx"]) * 100.00 + 1000
+        df["close"] = (max_inx - df["inx"]) * step + 1000
 
         
         return df
