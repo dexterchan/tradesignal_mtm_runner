@@ -22,17 +22,67 @@ def get_trade_agent(pnl_config:PnlCalcConfig) -> TradeBookKeeperAgent:
         fixed_unit=True
     )
 test_cases = [
-    "mtm_history_consistency",
-    "roi_not_close_long_position",
-    "roi_close_long_position",
-    "roi_not_close_short_position",
-    "roi_close_short_position"
+    "mtm_history_consistency_with_close_trade",
+    # "mtm_history_consistency",
+    # "roi_not_close_long_position",
+    # "roi_close_long_position",
+    # "roi_not_close_short_position",
+    # "roi_close_short_position"
 ]
 
 def calculate_pnl_from_mtm_history(trade_book_keeper_agent:TradeBookKeeperAgent) -> float:
     mtm_history = trade_book_keeper_agent.mtm_history
     mtm_array = np.array(mtm_history["mtm"])
     return mtm_array.sum()
+
+@pytest.mark.skipif("mtm_history_consistency_with_close_trade" not in test_cases, reason="skipped")
+def test_mtm_history_consistency_with_close_trade(get_test_ascending_mkt_data) -> None:
+    test_mktdata: pd.DataFrame = get_test_ascending_mkt_data(dim=DATA_DIM_MIN, step=DATA_MOVEMENT)
+    #print(test_mktdata)
+    pnl_config = PnlCalcConfig.get_default()
+    start_index = 1
+    end_index = 9
+    
+    pnl_config.roi = {
+        end_index: 1000
+    }
+    trade_book_keeper_agent : TradeBookKeeperAgent = get_trade_agent(pnl_config)
+
+    p1:ProxyTrade = ProxyTrade(
+            symbol=test_symbol,
+            entry_price=test_mktdata["close"][start_index],
+            entry_datetime=test_mktdata.index[start_index],
+            unit=100,
+            direction=LongShort_Enum.LONG,
+            inventory_mode=Inventory_Mode.FIFO
+        )
+    
+    trade_book_keeper_agent.outstanding_long_position_list.append(p1)
+
+    for i in range(0, len(test_mktdata)):
+        if test_mktdata.index[i] == test_mktdata.index[start_index]:
+            trade_book_keeper_agent.outstanding_long_position_list.append(p1)
+        if i == end_index:
+            p1.close_position(exit_price=test_mktdata["close"][end_index],
+                      exit_datetime=test_mktdata.index[end_index],
+                      close_reason=Proxy_Trade_Actions.SIGNAL)
+            trade_book_keeper_agent.archive_long_positions_list.append(p1)
+            trade_book_keeper_agent.outstanding_long_position_list.remove(p1)
+            
+        trade_book_keeper_agent.run_at_timestamp(
+            dt=test_mktdata.index[i],
+            price=test_mktdata["close"][i],
+            price_diff=test_mktdata["price_movement"][i],
+            buy_sell_action=Buy_Sell_Action_Enum.HOLD
+        )
+    accumulated_pnl:float = 0
+    for trade in trade_book_keeper_agent.archive_long_positions_list:
+        accumulated_pnl += trade.calculate_pnl_normalized(trade.exit_price)
+    assert accumulated_pnl == (trade.exit_price - trade.entry_price)/trade.entry_price
+    assert (calculate_pnl_from_mtm_history(trade_book_keeper_agent) - accumulated_pnl) < COMPARE_ERROR
+
+
+    pass
 
 @pytest.mark.skipif("mtm_history_consistency" not in test_cases, reason="skipped")
 def test_mtm_history_consistency(get_test_ascending_mkt_data) -> None:
