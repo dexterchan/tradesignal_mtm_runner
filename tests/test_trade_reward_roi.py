@@ -23,11 +23,11 @@ def get_trade_agent(pnl_config:PnlCalcConfig) -> TradeBookKeeperAgent:
     )
 test_cases = [
     "mtm_history_consistency_with_close_trade",
-    # "mtm_history_consistency",
-    # "roi_not_close_long_position",
-    # "roi_close_long_position",
-    # "roi_not_close_short_position",
-    # "roi_close_short_position"
+    "mtm_history_consistency",
+    "roi_not_close_long_position",
+    "roi_close_long_position",
+    "roi_not_close_short_position",
+    "roi_close_short_position"
 ]
 
 def calculate_pnl_from_mtm_history(trade_book_keeper_agent:TradeBookKeeperAgent) -> float:
@@ -57,7 +57,7 @@ def test_mtm_history_consistency_with_close_trade(get_test_ascending_mkt_data) -
             inventory_mode=Inventory_Mode.FIFO
         )
     
-    trade_book_keeper_agent.outstanding_long_position_list.append(p1)
+    
 
     for i in range(0, len(test_mktdata)):
         if test_mktdata.index[i] == test_mktdata.index[start_index]:
@@ -79,6 +79,9 @@ def test_mtm_history_consistency_with_close_trade(get_test_ascending_mkt_data) -
     for trade in trade_book_keeper_agent.archive_long_positions_list:
         accumulated_pnl += trade.calculate_pnl_normalized(trade.exit_price)
     assert accumulated_pnl == (trade.exit_price - trade.entry_price)/trade.entry_price
+    # logger.debug(trade.exit_price)
+    # logger.debug(trade.entry_price)
+    # logger.debug(trade_book_keeper_agent.mtm_history["mtm"])
     assert (calculate_pnl_from_mtm_history(trade_book_keeper_agent) - accumulated_pnl) < COMPARE_ERROR
 
 
@@ -277,8 +280,8 @@ def test_roi_close_short_position(get_test_descending_mkt_data) -> None:
             inventory_mode=Inventory_Mode.FIFO
         )
     trade_book_keeper_agent.outstanding_short_position_list.append(p)
-    logger.info(test_mktdata["close"][inx])
-    logger.info(trade_book_keeper_agent.outstanding_short_position_list[0].entry_price)
+    logger.debug(test_mktdata["close"][inx])
+    logger.debug(trade_book_keeper_agent.outstanding_short_position_list[0].entry_price)
     #logger.info(test_mktdata["close"][inx] - trade_book_keeper_agent.outstanding_short_position_list[0].entry_price)
 
     time = test_mktdata.index[inx]

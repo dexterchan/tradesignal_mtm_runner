@@ -99,7 +99,7 @@ class Trade_Runner(ITradeSignalRunner):
             entry_date=trade.entry_datetime, current_date=price_date, normalized_pnl=pnl
         )
         action_source: Proxy_Trade_Actions = (
-            Proxy_Trade_Actions.TAKE_PROFIT if is_close_position else None
+            Proxy_Trade_Actions.ROI if is_close_position else None
         )
 
         return (is_close_position, action_source)

@@ -5,6 +5,8 @@ from .helper import ROI_Helper
 from datetime import datetime
 from .utility import convert_datetime_to_ms
 import logging
+import numpy as np
+import math
 
 logger = logging.getLogger(__name__)
 class TradeBookKeeperAgent:
@@ -17,6 +19,7 @@ class TradeBookKeeperAgent:
         - instant mtm(t) at timestamp t with p(t) with all outstanding trades
         - For each outstanding trade, run through ROI at t with p(t) to see if we close the trade
         - For each outstanding trade, run through stop/loss at t with p(t) to see of we close the trade
+        - handle buy/sell position at t with p(t) and s(t)
 
         at any time t, we would work out Sharpe ratio with mtm(t)
     """
@@ -34,6 +37,8 @@ class TradeBookKeeperAgent:
         self.enable_short_position = pnl_config.enable_short_position
         self.fixed_unit = fixed_unit
         self.max_position_per_symbol = pnl_config.max_position_per_symbol
+
+        self.stop_loss:float = pnl_config.stoploss
 
         self.mtm_history = {
             "timestamp": [], #Integer in ms
@@ -82,7 +87,37 @@ class TradeBookKeeperAgent:
 
         #3. Check if we need to close any position with stop/loss in each trade
         # a. Long position
-        
+        self._check_if_stop_loss_close_position(
+            price=price,
+            dt=dt,
+            live_positions=self.outstanding_long_position_list,
+            archive_positions=self.archive_long_positions_list,
+        )
+        # b. Short position
+        self._check_if_stop_loss_close_position(
+            price=price,
+            dt=dt,
+            live_positions=self.outstanding_short_position_list,
+            archive_positions=self.archive_short_positions_list,
+        )
+
+        #4. Check if we need to open any position with s(t) and p(t) with buy signal
+        if buy_sell_action == Buy_Sell_Action_Enum.BUY:
+            self._check_if_open_buy_position(
+                price=price,
+                dt=dt,
+                live_long_positions=self.outstanding_long_position_list,
+                live_short_positions=self.outstanding_short_position_list,
+                archive_short_positions=self.archive_long_positions_list
+            )
+        elif buy_sell_action == Buy_Sell_Action_Enum.SELL:
+            self._check_if_open_sell_position(
+                price=price,
+                dt=dt,
+                live_short_positions=self.outstanding_short_position_list,
+                live_long_positions=self.outstanding_long_position_list,
+                archive_long_positions=self.archive_long_positions_list
+            )
         pass
 
     def _check_if_roi_close_position(self, price: float, dt: datetime, live_positions:list[ProxyTrade], archive_positions:list[ProxyTrade]) -> None:
@@ -109,3 +144,59 @@ class TradeBookKeeperAgent:
                 live_positions.remove(trade)
 
         pass
+
+    def _check_if_stop_loss_close_position(self, price: float, dt: datetime, live_positions:list[ProxyTrade], archive_positions:list[ProxyTrade]) -> None:
+        """ Check if we can close the position with stop/loss
+
+        Args:
+            price (float): price at the timestamp
+            dt (datetime): time stamp
+            live_positions (list[ProxyTrade]): Live position list
+            archive_positions (list[ProxyTrade]): archive position list
+        """
+        for trade in live_positions:
+            cur_pnl:float = trade.calculate_pnl_normalized(price = price)
+
+            if cur_pnl < -(abs(self.stop_loss)):
+                # Close the trade
+                logger.info(f"Close trade with stop loss:{trade}  at price {price} pnl:{cur_pnl} - {self.stop_loss}")
+                trade.close_position(
+                    exit_price=price,
+                    exit_datetime=dt,
+                    close_reason=Proxy_Trade_Actions.STOP_LOSS
+                )
+                archive_positions.append(trade)
+                live_positions.remove(trade)
+        pass
+
+    def _check_if_open_buy_position(
+        self,
+        price: float,   
+        dt: datetime,
+        live_long_positions:list[ProxyTrade],
+        live_short_positions:list[ProxyTrade],
+        archive_short_positions:list[ProxyTrade]
+        )->None:
+        """ Check if we can open a long position
+        Args:
+            price (float): price at the timestamp
+            dt (datetime): time stamp
+            live_long_positions (list[ProxyTrade]): Live long position list
+            live_short_positions (list[ProxyTrade]): Live short position list
+            archive_short_positions (list[ProxyTrade]): archive short position list
+        """
+
+        # 1. Check if we reach max position
+
+        pass
+
+    def calculate_mtm(self) -> float:
+        """ calculate MTM recorded in the history
+
+        Returns:
+            float: total pnl
+        """
+        mtm_history = self.mtm_history
+        mtm_array = np.array(mtm_history["mtm"])
+        return mtm_array.sum()
+        
