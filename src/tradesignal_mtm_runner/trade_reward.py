@@ -135,7 +135,7 @@ class TradeBookKeeperAgent:
             if self.roi_helper.can_take_profit(entry_date=trade.entry_datetime,current_date=dt, normalized_pnl=cur_pnl):
                 # Close the trade
                 logger.info(f"Close trade with ROI:{trade}")
-                self._close_long_trade_position_helper(
+                self._close_trade_position_helper(
                     trade=trade,
                     price=price,
                     dt=dt,
@@ -163,7 +163,7 @@ class TradeBookKeeperAgent:
                 # Close the trade
                 logger.info(f"Close trade with stop loss:{trade}  at price {price} pnl:{cur_pnl} - {self.stop_loss}")
                 
-                self._close_long_trade_position_helper(
+                self._close_trade_position_helper(
                     trade=trade,
                     price=price,
                     dt=dt,
@@ -224,7 +224,7 @@ class TradeBookKeeperAgent:
         return mtm_array.sum()
         
     
-    def _close_long_trade_position_helper(self, trade:ProxyTrade, close_reason:Proxy_Trade_Actions,  price:float, dt:datetime, live_positions:list[ProxyTrade], archive_positions:list[ProxyTrade]):
+    def _close_trade_position_helper(self, trade:ProxyTrade, close_reason:Proxy_Trade_Actions,  price:float, dt:datetime, live_positions:list[ProxyTrade], archive_positions:list[ProxyTrade]):
         """  Helper function to close a long position
         
 
