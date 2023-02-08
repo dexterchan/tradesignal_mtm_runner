@@ -135,7 +135,6 @@ class TradeBookKeeperAgent:
             cur_pnl:float = trade.calculate_pnl_normalized(price = price)
             if self.roi_helper.can_take_profit(entry_date=trade.entry_datetime,current_date=dt, normalized_pnl=cur_pnl):
                 # Close the trade
-                logger.info(f"Close trade with ROI:{trade}")
                 self._close_trade_position_helper(
                     trade=trade,
                     price=price,
@@ -144,6 +143,7 @@ class TradeBookKeeperAgent:
                     live_positions=live_positions,
                     close_reason=Proxy_Trade_Actions.ROI
                 )
+                logger.info(f"Close trade with ROI:{trade}")
                 
 
         pass
@@ -210,6 +210,7 @@ class TradeBookKeeperAgent:
                     close_reason=Proxy_Trade_Actions.SIGNAL
                 )
             return
+
         # 4. Open a new position
         trade = ProxyTrade(
             symbol=self.symbol,
@@ -220,6 +221,54 @@ class TradeBookKeeperAgent:
             unit=self.fixed_unit,
         )
         live_long_positions.append(trade)
+
+        pass
+
+    def _check_if_open_sell_position(self,
+        price: float,   
+        dt: datetime,
+        live_short_positions:list[ProxyTrade],
+        live_long_positions:list[ProxyTrade],
+        archive_long_positions:list[ProxyTrade]
+        )->None:
+        """ Check if we can open a short position
+        Args:
+            price (float): price at the timestamp
+            dt (datetime): time stamp
+            live_short_positions (list[ProxyTrade]): Live short position list
+            live_long_positions (list[ProxyTrade]): Live long position list
+            archive_long_positions (list[ProxyTrade]): archive long position list
+        """
+        # 1. Check if we reach max position
+        if len(live_short_positions) >= self.max_position_per_symbol:
+            logger.info(f"Reach max position {self.max_position_per_symbol}")
+            return  
+
+        # 2. Credit line checking: Check if we have enough cash to open a position
+        # ignored right now
+
+        # 3. Check if we have any long position to close
+        if len(live_long_positions) > 0 and (trade:=self._get_trade_to_close(LongShort_Enum.LONG)) is not None:
+            self._close_trade_position_helper(
+                    trade=trade,
+                    price=price,
+                    dt=dt,
+                    archive_positions=archive_long_positions,
+                    live_positions=live_long_positions,
+                    close_reason=Proxy_Trade_Actions.SIGNAL
+                )
+            return
+
+        # 4. Open a new position
+        trade = ProxyTrade(
+            symbol=self.symbol,
+            entry_datetime=dt,
+            entry_price=price,
+            inventory_mode=self.inventory_mode,
+            direction=LongShort_Enum.SHORT,
+            unit=self.fixed_unit,
+        )
+        live_short_positions.append(trade)
 
         pass
 
