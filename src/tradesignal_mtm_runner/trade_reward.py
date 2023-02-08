@@ -6,7 +6,7 @@ from datetime import datetime
 from .utility import convert_datetime_to_ms
 import logging
 import numpy as np
-import math
+
 
 logger = logging.getLogger(__name__)
 class TradeBookKeeperAgent:
@@ -135,13 +135,15 @@ class TradeBookKeeperAgent:
             if self.roi_helper.can_take_profit(entry_date=trade.entry_datetime,current_date=dt, normalized_pnl=cur_pnl):
                 # Close the trade
                 logger.info(f"Close trade with ROI:{trade}")
-                trade.close_position(
-                    exit_price=price,
-                    exit_datetime=dt,
+                self._close_long_trade_position_helper(
+                    trade=trade,
+                    price=price,
+                    dt=dt,
+                    archive_positions=archive_positions,
+                    live_positions=live_positions,
                     close_reason=Proxy_Trade_Actions.ROI
                 )
-                archive_positions.append(trade)
-                live_positions.remove(trade)
+                
 
         pass
 
@@ -160,13 +162,15 @@ class TradeBookKeeperAgent:
             if cur_pnl < -(abs(self.stop_loss)):
                 # Close the trade
                 logger.info(f"Close trade with stop loss:{trade}  at price {price} pnl:{cur_pnl} - {self.stop_loss}")
-                trade.close_position(
-                    exit_price=price,
-                    exit_datetime=dt,
+                
+                self._close_long_trade_position_helper(
+                    trade=trade,
+                    price=price,
+                    dt=dt,
+                    archive_positions=archive_positions,
+                    live_positions=live_positions,
                     close_reason=Proxy_Trade_Actions.STOP_LOSS
                 )
-                archive_positions.append(trade)
-                live_positions.remove(trade)
         pass
 
     def _check_if_open_buy_position(
@@ -187,6 +191,25 @@ class TradeBookKeeperAgent:
         """
 
         # 1. Check if we reach max position
+        if len(live_long_positions) >= self.max_position:
+            logger.info(f"Reach max position {self.max_position}")
+            return
+
+        # 2. Credit line checking: Check if we have enough cash to open a position
+        # ignored right now
+
+        # 3. Check if we have any short position to close
+        if len(live_short_positions) > 0:
+            trade:ProxyTrade = self.get_short_trade_to_close()
+            trade.close_position(
+                exit_price=price,
+                exit_datetime=dt,
+                close_reason=Proxy_Trade_Actions.SIGNAL
+            )
+            self.archive_short_positions_list.append(trade)
+            self.outstanding_short_position_list.remove(trade)
+
+            
 
         pass
 
@@ -200,3 +223,24 @@ class TradeBookKeeperAgent:
         mtm_array = np.array(mtm_history["mtm"])
         return mtm_array.sum()
         
+    
+    def _close_long_trade_position_helper(self, trade:ProxyTrade, close_reason:Proxy_Trade_Actions,  price:float, dt:datetime, live_positions:list[ProxyTrade], archive_positions:list[ProxyTrade]):
+        """  Helper function to close a long position
+        
+
+        Args:
+            trade (ProxyTrade): trade to close
+            close_reason (Proxy_Trade_Actions): close reason
+            price (float): close at price
+            dt (datetime): close at time
+            live_positions (list[ProxyTrade]): live position list
+            archive_positions (list[ProxyTrade]): archive position list
+        """
+        trade.close_position(
+            exit_price=price,
+            exit_datetime=dt,
+            close_reason=close_reason
+        )
+        archive_positions.append(trade)
+        live_positions.remove(trade)
+        pass
