@@ -72,6 +72,7 @@ class ProxyTrade(BaseModel):
     close_reason: Proxy_Trade_Actions = Field(default=None)
     mtm_history: list[float] = Field(default_factory=list)
     inventory_mode:Inventory_Mode = Field(default=Inventory_Mode.WORST_PRICE)
+    fee: float = Field(default=0.01)
 
     @property
     def check_closed(self) -> bool:

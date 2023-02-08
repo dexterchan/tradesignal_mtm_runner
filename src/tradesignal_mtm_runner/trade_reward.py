@@ -1,12 +1,12 @@
 from __future__ import annotations
 from .config import PnlCalcConfig
-from .models import ProxyTrade, Buy_Sell_Action_Enum, Proxy_Trade_Actions
+from .models import ProxyTrade, Buy_Sell_Action_Enum, Proxy_Trade_Actions, LongShort_Enum, Inventory_Mode
 from .helper import ROI_Helper
 from datetime import datetime
 from .utility import convert_datetime_to_ms
 import logging
 import numpy as np
-
+import heapq
 
 logger = logging.getLogger(__name__)
 class TradeBookKeeperAgent:
@@ -46,6 +46,7 @@ class TradeBookKeeperAgent:
         }
 
         self.roi_helper = ROI_Helper(pnl_config.roi)
+        self.inventory_mode = Inventory_Mode.FIFO
         pass
 
     def run_at_timestamp(self, dt: datetime, price: float, price_diff:float, buy_sell_action:Buy_Sell_Action_Enum) -> None:
@@ -191,27 +192,52 @@ class TradeBookKeeperAgent:
         """
 
         # 1. Check if we reach max position
-        if len(live_long_positions) >= self.max_position:
-            logger.info(f"Reach max position {self.max_position}")
+        if len(live_long_positions) >= self.max_position_per_symbol:
+            logger.info(f"Reach max position {self.max_position_per_symbol}")
             return
 
         # 2. Credit line checking: Check if we have enough cash to open a position
         # ignored right now
 
         # 3. Check if we have any short position to close
-        if len(live_short_positions) > 0:
-            trade:ProxyTrade = self.get_short_trade_to_close()
-            trade.close_position(
-                exit_price=price,
-                exit_datetime=dt,
-                close_reason=Proxy_Trade_Actions.SIGNAL
-            )
-            self.archive_short_positions_list.append(trade)
-            self.outstanding_short_position_list.remove(trade)
-
-            
+        if len(live_short_positions) > 0 and (trade:=self._get_trade_to_close(LongShort_Enum.SHORT)) is not None:
+            self._close_trade_position_helper(
+                    trade=trade,
+                    price=price,
+                    dt=dt,
+                    archive_positions=archive_short_positions,
+                    live_positions=live_short_positions,
+                    close_reason=Proxy_Trade_Actions.SIGNAL
+                )
+            return
+        # 4. Open a new position
+        trade = ProxyTrade(
+            symbol=self.symbol,
+            entry_datetime=dt,
+            entry_price=price,
+            inventory_mode=self.inventory_mode,
+            direction=LongShort_Enum.LONG,
+            unit=self.fixed_unit,
+        )
+        live_long_positions.append(trade)
 
         pass
+
+    def _get_trade_to_close(self, long_short:LongShort_Enum) -> ProxyTrade:
+        """ Get the trade to close
+        Args:
+            long_short (LongShort_Enum): long or short
+        Returns:
+            ProxyTrade: trade to close
+        """
+        if long_short == LongShort_Enum.LONG and len(self.outstanding_long_position_list) > 0:
+            self.outstanding_long_position_list = heapq.heapify(self.outstanding_long_position_list)
+            return self.outstanding_long_position_list[0]
+        elif long_short == LongShort_Enum.SHORT and len(self.outstanding_short_position_list) > 0:
+            self.outstanding_short_position_list = heapq.heapify(self.outstanding_short_position_list)
+            return self.outstanding_short_position_list[0]
+        else:
+            return None
 
     def calculate_mtm(self) -> float:
         """ calculate MTM recorded in the history
@@ -223,6 +249,7 @@ class TradeBookKeeperAgent:
         mtm_array = np.array(mtm_history["mtm"])
         return mtm_array.sum()
         
+    
     
     def _close_trade_position_helper(self, trade:ProxyTrade, close_reason:Proxy_Trade_Actions,  price:float, dt:datetime, live_positions:list[ProxyTrade], archive_positions:list[ProxyTrade]):
         """  Helper function to close a long position

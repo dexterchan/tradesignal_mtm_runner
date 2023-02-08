@@ -3,7 +3,7 @@ from tradesignal_mtm_runner.config import PnlCalcConfig
 from tradesignal_mtm_runner.models import Buy_Sell_Action_Enum, ProxyTrade, LongShort_Enum, Inventory_Mode, Proxy_Trade_Actions
 import numpy as np
 import pandas as pd
-DATA_DIM_MIN = 10
+DATA_DIM_MIN = 100
 DATA_MOVEMENT = 100
 COMPARE_ERROR = 0.00001
 from datetime import datetime, timedelta
