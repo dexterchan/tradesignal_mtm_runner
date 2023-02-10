@@ -28,7 +28,8 @@ test_cases:list = [
      "tradesignal_long_with_roi",
     "tradesignal_short_with_roi",
     "tradesignal_long_with_stoploss",
-    "tradesignal_short_with_stoploss"
+    "tradesignal_short_with_stoploss",
+    "tradesignal_long_with_short_positions"
 ]
 
 @pytest.mark.skipif("tradesignal_long_no_roi_no_stoploss" not in test_cases, reason="Not implemented yet")
@@ -275,3 +276,45 @@ def test_tradesignal_short_with_stoploss(get_test_ascending_mkt_data, get_pnl_co
     assert abs(mtm - -expected_loss ) < COMPARE_ERROR
 
     pass
+
+@pytest.mark.skipif("tradesignal_long_with_short_positions" not in test_cases, reason="Not implemented yet")
+def test_tradesignal_long_with_short_positions(get_test_ascending_mkt_data) -> None:
+    test_mktdata: pd.DataFrame = get_test_ascending_mkt_data(dim=DATA_DIM_MIN, step=DATA_MOVEMENT)
+
+    pnl_config = PnlCalcConfig.get_default()
+    pnl_config.max_position_per_symbol = 10
+    first_long:int = int(DATA_DIM_MIN/5)
+    second_long:int = first_long + int(DATA_DIM_MIN/5)
+    first_short:int = second_long + int(DATA_DIM_MIN/5)
+
+    trade_book_keeper_agent: TradeBookKeeperAgent = TradeBookKeeperAgent(
+        pnl_config=pnl_config,
+        symbol=test_symbol,
+    )
+    
+    #Run through the market data
+    for i in range(1, len(test_mktdata)):
+        if i in (first_long, second_long):
+            action:Buy_Sell_Action_Enum = Buy_Sell_Action_Enum.BUY
+            logger.info(f"{action} at {i} - {test_mktdata.index[i]}")
+        elif i == first_short:
+            action:Buy_Sell_Action_Enum = Buy_Sell_Action_Enum.SELL
+            logger.info(f"{action} at {i} - {test_mktdata.index[i]}")
+        else:
+            action:Buy_Sell_Action_Enum = Buy_Sell_Action_Enum.HOLD
+        trade_book_keeper_agent.run_at_timestamp(
+            dt=test_mktdata.index[i],
+            price=test_mktdata["close"][i],
+            price_diff=test_mktdata["price_movement"][i],
+            buy_sell_action=action
+        )
+        
+    #Check the result
+    
+    assert len(trade_book_keeper_agent.outstanding_long_position_list) == 1
+    assert len(trade_book_keeper_agent.archive_long_positions_list) == 1
+    assert len(trade_book_keeper_agent.outstanding_short_position_list) == 0
+    assert len(trade_book_keeper_agent.archive_short_positions_list) == 0
+    logger.info(trade_book_keeper_agent.archive_long_positions_list)
+    assert trade_book_keeper_agent.archive_long_positions_list[0].entry_datetime == test_mktdata.index[first_long]
+    assert trade_book_keeper_agent.outstanding_long_position_list[0].entry_datetime == test_mktdata.index[second_long]

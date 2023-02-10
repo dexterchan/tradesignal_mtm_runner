@@ -163,7 +163,23 @@ class ProxyTrade(BaseModel):
                 return self.entry_price < other.entry_price
         elif self.inventory_mode == Inventory_Mode.FIFO:
             #First in first out
+            #return self.entry_datetime > self.entry_datetime
             return self.entry_datetime < self.entry_datetime
         elif self.inventory_mode == Inventory_Mode.LIFO:
             #Last in First out
+            #return self.entry_datetime < self.entry_datetime
             return self.entry_datetime > self.entry_datetime
+
+    # def __gt__(self, other: ProxyTrade):
+    #     """Comparator to sort the order of trade by entry price
+            
+    #     Args:
+    #         other (ProxyTrade): [description]
+
+    #     Raises:
+    #         Exception: [description]
+
+    #     Returns:
+    #         [type]: [description]
+    #     """
+    #     return not self.__lt__(other=other)
