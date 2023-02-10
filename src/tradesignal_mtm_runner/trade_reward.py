@@ -109,7 +109,7 @@ class TradeBookKeeperAgent:
                 dt=dt,
                 live_long_positions=self.outstanding_long_position_list,
                 live_short_positions=self.outstanding_short_position_list,
-                archive_short_positions=self.archive_long_positions_list
+                archive_short_positions=self.archive_short_positions_list
             )
         elif buy_sell_action == Buy_Sell_Action_Enum.SELL:
             self._check_if_open_sell_position(
