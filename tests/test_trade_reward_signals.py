@@ -51,7 +51,7 @@ def test_tradesignal_long_no_roi_no_stoploss(get_test_ascending_mkt_data) -> Non
         symbol=test_symbol,
     )
     #Run through the market data
-    for i in range(1, len(test_mktdata)):
+    for i in range( len(test_mktdata)):
         action:Buy_Sell_Action_Enum = Buy_Sell_Action_Enum.BUY if i==start else Buy_Sell_Action_Enum.HOLD
         trade_book_keeper_agent.run_at_timestamp(
             dt=test_mktdata.index[i],
@@ -67,7 +67,7 @@ def test_tradesignal_long_no_roi_no_stoploss(get_test_ascending_mkt_data) -> Non
     accumulated_pnl:float = 0
     for trade in trade_book_keeper_agent.outstanding_long_position_list:
         accumulated_pnl += trade.calculate_pnl_normalized(test_mktdata["close"][-1])
-    agent_mtm:float = trade_book_keeper_agent.calculate_mtm()
+    agent_mtm:float = trade_book_keeper_agent.calculate_pnl_from_mtm_history()
     assert abs(accumulated_pnl - agent_mtm) < COMPARE_ERROR
 
 @pytest.mark.skipif("tradesignal_short_no_roi_no_stoploss" not in test_cases, reason="Not implemented yet")
@@ -88,7 +88,7 @@ def test_tradesignal_short_no_roi_no_stoploss(get_test_descending_mkt_data) -> N
         symbol=test_symbol,
     )
     #Run through the market data
-    for i in range(1, len(test_mktdata)):
+    for i in range( len(test_mktdata)):
         action:Buy_Sell_Action_Enum = Buy_Sell_Action_Enum.SELL if i==start else Buy_Sell_Action_Enum.HOLD
         trade_book_keeper_agent.run_at_timestamp(
             dt=test_mktdata.index[i],
@@ -104,7 +104,7 @@ def test_tradesignal_short_no_roi_no_stoploss(get_test_descending_mkt_data) -> N
     accumulated_pnl:float = 0
     for trade in trade_book_keeper_agent.outstanding_short_position_list:
         accumulated_pnl += trade.calculate_pnl_normalized(test_mktdata["close"][-1])
-    agent_mtm:float = trade_book_keeper_agent.calculate_mtm()
+    agent_mtm:float = trade_book_keeper_agent.calculate_pnl_from_mtm_history()
     assert abs(accumulated_pnl - agent_mtm) < COMPARE_ERROR
 
 @pytest.mark.skipif("tradesignal_long_with_roi" not in test_cases, reason="Not implemented yet")
@@ -148,7 +148,7 @@ def test_tradesignal_long_with_roi(get_test_ascending_mkt_data) -> None:
     assert len(trade_book_keeper_agent.archive_long_positions_list) == 1
     logger.info(trade_book_keeper_agent.mtm_history)
     logger.info(pnl_config.roi)
-    mtm = trade_book_keeper_agent.calculate_mtm()
+    mtm = trade_book_keeper_agent.calculate_pnl_from_mtm_history()
     assert abs(mtm - expect_mtm )< DATA_MOVEMENT*2/test_mktdata["close"][0]
 
     pass
@@ -178,7 +178,7 @@ def test_tradesignal_short_with_roi(get_test_descending_mkt_data) -> None:
     )
 
     #Run through the market data
-    for i in range(1, len(test_mktdata)):
+    for i in range(len(test_mktdata)):
         action:Buy_Sell_Action_Enum = Buy_Sell_Action_Enum.SELL if i==inx else Buy_Sell_Action_Enum.HOLD
         trade_book_keeper_agent.run_at_timestamp(
             dt=test_mktdata.index[i],
@@ -191,7 +191,7 @@ def test_tradesignal_short_with_roi(get_test_descending_mkt_data) -> None:
     assert len(trade_book_keeper_agent.archive_short_positions_list) == 1
     # logger.info(trade_book_keeper_agent.mtm_history)
     # logger.info(pnl_config.roi)
-    mtm = trade_book_keeper_agent.calculate_mtm()
+    mtm = trade_book_keeper_agent.calculate_pnl_from_mtm_history()
     assert abs(mtm - expect_mtm )< DATA_MOVEMENT/test_mktdata["close"][inx]
 
     pass
@@ -219,7 +219,7 @@ def test_tradesignal_long_with_stoploss(get_test_descending_mkt_data, get_pnl_co
     )
 
     #Run through the market data
-    for i in range(1, len(test_mktdata)):
+    for i in range(len(test_mktdata)):
         action:Buy_Sell_Action_Enum = Buy_Sell_Action_Enum.BUY if i==start else Buy_Sell_Action_Enum.HOLD
         trade_book_keeper_agent.run_at_timestamp(
             dt=test_mktdata.index[i],
@@ -231,7 +231,7 @@ def test_tradesignal_long_with_stoploss(get_test_descending_mkt_data, get_pnl_co
     assert len(trade_book_keeper_agent.outstanding_long_position_list) == 0
     assert len(trade_book_keeper_agent.archive_long_positions_list) == 1
     
-    mtm = trade_book_keeper_agent.calculate_mtm()
+    mtm = trade_book_keeper_agent.calculate_pnl_from_mtm_history()
     assert abs(mtm - -expected_loss ) < COMPARE_ERROR
 
     pass
@@ -261,7 +261,7 @@ def test_tradesignal_short_with_stoploss(get_test_ascending_mkt_data, get_pnl_co
     )
 
     #Run through the market data
-    for i in range(1, len(test_mktdata)):
+    for i in range(len(test_mktdata)):
         action:Buy_Sell_Action_Enum = Buy_Sell_Action_Enum.SELL if i==start else Buy_Sell_Action_Enum.HOLD
         trade_book_keeper_agent.run_at_timestamp(
             dt=test_mktdata.index[i],
@@ -273,7 +273,7 @@ def test_tradesignal_short_with_stoploss(get_test_ascending_mkt_data, get_pnl_co
     assert len(trade_book_keeper_agent.outstanding_short_position_list) == 0
     assert len(trade_book_keeper_agent.archive_short_positions_list) == 1
     
-    mtm = trade_book_keeper_agent.calculate_mtm()
+    mtm = trade_book_keeper_agent.calculate_pnl_from_mtm_history()
     assert abs(mtm - -expected_loss ) < COMPARE_ERROR
 
     pass
@@ -292,9 +292,12 @@ def test_tradesignal_long_with_short_positions(get_test_ascending_mkt_data) -> N
         pnl_config=pnl_config,
         symbol=test_symbol,
     )
+
+    expected_pnl_1 = (test_mktdata["close"][first_short] - test_mktdata["close"][first_long])/test_mktdata["close"][first_long]
+    expected_pnl_2 = (test_mktdata["close"][-1] - test_mktdata["close"][second_long])/test_mktdata["close"][second_long]
     
     #Run through the market data
-    for i in range(1, len(test_mktdata)):
+    for i in range( len(test_mktdata)):
         if i in (first_long, second_long):
             action:Buy_Sell_Action_Enum = Buy_Sell_Action_Enum.BUY
             logger.info(f"{action} at {i} - {test_mktdata.index[i]}")
@@ -317,8 +320,23 @@ def test_tradesignal_long_with_short_positions(get_test_ascending_mkt_data) -> N
     assert len(trade_book_keeper_agent.outstanding_short_position_list) == 0
     assert len(trade_book_keeper_agent.archive_short_positions_list) == 0
     
-    assert trade_book_keeper_agent.archive_long_positions_list[0].entry_datetime == test_mktdata.index[first_long]
-    assert trade_book_keeper_agent.outstanding_long_position_list[0].entry_datetime == test_mktdata.index[second_long]
+    trade1 = trade_book_keeper_agent.archive_long_positions_list[0]
+    trade2 = trade_book_keeper_agent.outstanding_long_position_list[0]
+    assert trade1.entry_datetime == test_mktdata.index[first_long]
+    assert trade2.entry_datetime == test_mktdata.index[second_long]
+    assert trade1.exit_datetime == test_mktdata.index[first_short]
+
+    #Check the mtm
+    pnl_1 = trade1.calculate_pnl_normalized(price=trade1.exit_price)
+    pnl_2 = trade2.calculate_pnl_normalized(price=test_mktdata["close"][-1])
+    assert expected_pnl_1 == pnl_1
+    assert expected_pnl_2 == pnl_2
+
+    total_pnl_expected = pnl_1 + pnl_2
+    total_pnl = trade_book_keeper_agent.calculate_pnl_from_mtm_history()
+    assert total_pnl_expected == total_pnl
+
+
 
 
 @pytest.mark.skipif("tradesignal_short_with_long_positions" not in test_cases, reason="Not implemented yet")
@@ -328,16 +346,21 @@ def test_tradesignal_short_with_long_positions(get_test_descending_mkt_data) -> 
     pnl_config = PnlCalcConfig.get_default()
     pnl_config.max_position_per_symbol = 10
     first_short:int = int(DATA_DIM_MIN/5)
-    second_short:int = first_short + int(DATA_DIM_MIN/5)
+    second_short:int = first_short + int(DATA_DIM_MIN/5) 
     first_long:int = second_short+ int(DATA_DIM_MIN/5)
+    
 
     trade_book_keeper_agent: TradeBookKeeperAgent = TradeBookKeeperAgent(
         pnl_config=pnl_config,
         symbol=test_symbol,
     )
 
+    expected_pnl_1 = (test_mktdata["close"][first_short] - test_mktdata["close"][first_long])/test_mktdata["close"][first_short]
+    expected_pnl_2 = (test_mktdata["close"][second_short] - test_mktdata["close"][-1])/test_mktdata["close"][second_short]
+
+
     #Run through the market data
-    for i in range(1, len(test_mktdata)):
+    for i in range(len(test_mktdata)):
         if i in (first_short, second_short):
             action:Buy_Sell_Action_Enum = Buy_Sell_Action_Enum.SELL
             logger.info(f"{action} at {i} - {test_mktdata.index[i]}")
@@ -359,6 +382,29 @@ def test_tradesignal_short_with_long_positions(get_test_descending_mkt_data) -> 
     assert len(trade_book_keeper_agent.archive_short_positions_list) == 1
     assert len(trade_book_keeper_agent.outstanding_long_position_list) == 0
     assert len(trade_book_keeper_agent.archive_long_positions_list) == 0, f"{trade_book_keeper_agent.archive_long_positions_list}"
+    
+    first_trade = trade_book_keeper_agent.archive_short_positions_list[0]
+    second_trade = trade_book_keeper_agent.outstanding_short_position_list[0]
+    
+    assert first_trade.entry_datetime == test_mktdata.index[first_short]
+    assert first_trade.exit_datetime == test_mktdata.index[first_long]
+    assert second_trade.entry_datetime == test_mktdata.index[second_short]
 
-    assert trade_book_keeper_agent.archive_short_positions_list[0].entry_datetime == test_mktdata.index[first_short]
-    assert trade_book_keeper_agent.outstanding_short_position_list[0].entry_datetime == test_mktdata.index[second_short]
+
+    
+    pnl_first = first_trade.calculate_pnl_normalized(price=first_trade.exit_price)
+    pnl_second = second_trade.calculate_pnl_normalized(price=test_mktdata["close"][-1])
+
+    assert abs(pnl_second - expected_pnl_2) < COMPARE_ERROR
+    assert abs(pnl_first - expected_pnl_1) < COMPARE_ERROR
+
+    total_pnl_expected = pnl_first + pnl_second
+    total_pnl = trade_book_keeper_agent.calculate_pnl_from_mtm_history()
+    logger.debug(f"first trade start:{first_short} ")
+    logger.debug(f"second trade start:{second_short} ")
+    logger.debug(f"first trade end:{first_long} ")
+    logger.debug(f"first trade pnl:{pnl_first} : {first_trade}")
+    logger.debug(f"second trade pnl:{pnl_second} : {second_trade} ")
+    
+    logger.debug(trade_book_keeper_agent.mtm_history["mtm"])
+    assert abs(total_pnl - total_pnl_expected) < COMPARE_ERROR

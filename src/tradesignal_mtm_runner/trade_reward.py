@@ -299,8 +299,8 @@ class TradeBookKeeperAgent:
         else:
             return None
 
-    def calculate_mtm(self) -> float:
-        """ calculate MTM recorded in the history
+    def calculate_pnl_from_mtm_history(self) -> float:
+        """ calculate pnl recorded in the mtm history
 
         Returns:
             float: total pnl

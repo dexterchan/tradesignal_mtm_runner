@@ -96,6 +96,14 @@ class ProxyTrade(BaseModel):
         return self.calculate_pnl(price=price) / self.entry_price
 
     def calculate_mtm_normalized(self, price_diff: float) -> float:
+        """ calculate mtm from the price difference p(t) - p(t-1)
+
+        Args:
+            price_diff (float): price diff between p(t) and p(t-1)
+
+        Returns:
+            float: delta mtm
+        """
         if price_diff is np.nan:
             return 0
         mtm = price_diff if self.direction == LongShort_Enum.LONG else -price_diff
