@@ -1,12 +1,12 @@
 from __future__ import annotations
 from .config import PnlCalcConfig
-from .models import ProxyTrade, Buy_Sell_Action_Enum, Proxy_Trade_Actions, LongShort_Enum, Inventory_Mode
+from .models import ProxyTrade, Buy_Sell_Action_Enum, Proxy_Trade_Actions, LongShort_Enum, Inventory_Mode, MIN_NUMERIC_VALUE
 from .helper import ROI_Helper
-from datetime import datetime
+from datetime import datetime, timedelta
 from .utility import convert_datetime_to_ms
 import logging
 import numpy as np
-import heapq
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 class TradeBookKeeperAgent:
@@ -40,14 +40,20 @@ class TradeBookKeeperAgent:
 
         self.stop_loss:float = pnl_config.stoploss
 
-        self.mtm_history = {
+        self._mtm_history = {
             "timestamp": [], #Integer in ms
             "mtm": [] #float
         }
 
         self.roi_helper = ROI_Helper(pnl_config.roi)
         self.inventory_mode = Inventory_Mode.FIFO
+        self.PROFIT_SLIPPAGE: float = 0.000001
         pass
+
+    @property
+    def mtm_history(self) -> list[float]:
+        return self._mtm_history["mtm"]
+        
 
     def run_at_timestamp(self, dt: datetime, price: float, price_diff:float, buy_sell_action:Buy_Sell_Action_Enum) -> None:
         """ Run the book keeper at a given timestamp
@@ -67,8 +73,8 @@ class TradeBookKeeperAgent:
                 continue
             normalized_mtm = trade.calculate_mtm_normalized(price_diff=price_diff)
             accumulated_mtm += normalized_mtm
-        self.mtm_history["timestamp"].append(convert_datetime_to_ms(dt))
-        self.mtm_history["mtm"].append(accumulated_mtm)
+        self._mtm_history["timestamp"].append(convert_datetime_to_ms(dt))
+        self._mtm_history["mtm"].append(accumulated_mtm)
 
         # 2. Check if we need to close any position with ROI in each trade
         # a. Long position
@@ -305,10 +311,36 @@ class TradeBookKeeperAgent:
         Returns:
             float: total pnl
         """
-        mtm_history = self.mtm_history
-        mtm_array = np.array(mtm_history["mtm"])
-        return mtm_array.sum()
         
+        mtm_array = np.array(self.mtm_history)
+        return mtm_array.sum()
+    
+    
+    def _calculate_sharpe_ratio(self) -> tuple[float]:
+        """Calculate sharpe ratio
+        Args:
+            pnl_ts_data (pd.Dataframe): index: timestamp, column: pnl_ratio
+
+        Returns:
+            Tuple[float, pd.Dataframe ]: sharpe ratio, Dataframe: column, pnl daily
+        """
+        df:pd.DataFrame = pd.DataFrame(data = self._mtm_history)
+        df.set_index("timestamp", inplace=True, drop=True)
+
+        #pnl_ts_data_daily: pd.DataFrame = df.resample("1H").sum()
+        period:timedelta = df.index[-1] - df.index[0]
+        time_period_hours: int = (period.total_seconds() / 3600)
+        df["mtm_slippage"] = df["mtm"] - self.PROFIT_SLIPPAGE
+        total_profit = df["mtm_slippage"]
+        expected_yearly_return = total_profit.sum() / time_period_hours
+        std_profit = np.std(total_profit)
+        sharpe_ratio: float = (
+            expected_yearly_return / std_profit * np.sqrt(365 * 24)
+            if std_profit != 0
+            else MIN_NUMERIC_VALUE  # float("-inf")
+        )
+
+        return sharpe_ratio
     
     
     def _close_trade_position_helper(self, trade:ProxyTrade, close_reason:Proxy_Trade_Actions,  price:float, dt:datetime, live_positions:list[ProxyTrade], archive_positions:list[ProxyTrade]):

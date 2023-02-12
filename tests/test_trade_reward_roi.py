@@ -32,7 +32,7 @@ test_cases = [
 
 def calculate_pnl_from_mtm_history(trade_book_keeper_agent:TradeBookKeeperAgent) -> float:
     mtm_history = trade_book_keeper_agent.mtm_history
-    mtm_array = np.array(mtm_history["mtm"])
+    mtm_array = np.array(mtm_history)
     return mtm_array.sum()
 
 @pytest.mark.skipif("mtm_history_consistency_with_close_trade" not in test_cases, reason="skipped")

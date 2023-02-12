@@ -213,8 +213,8 @@ def test_trade_pnl_runner_with_stop_loss(get_test_descending_mkt_data, get_pnl_c
 
     obj = pnl_result.dict()
     # logger.info(type(obj))
-    logger.info(obj["pnl_daily"])
-    logger.info(obj["sharpe_ratio"])
+    #logger.info(obj["pnl_daily"])
+    #logger.info(obj["sharpe_ratio"])
     pass
 
 @pytest.mark.skipif(

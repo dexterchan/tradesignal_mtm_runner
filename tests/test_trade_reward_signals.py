@@ -142,7 +142,7 @@ def test_tradesignal_long_with_roi(get_test_ascending_mkt_data) -> None:
         )
         if len(trade_book_keeper_agent.outstanding_long_position_list)>0:
             trade = trade_book_keeper_agent.outstanding_long_position_list[0]
-            logger.info(f"{i} : {trade.is_closed} : {trade_book_keeper_agent.mtm_history['mtm'][-1]} : {trade.calculate_pnl_normalized(test_mktdata['close'][i])} ")
+            logger.info(f"{i} : {trade.is_closed} : {trade_book_keeper_agent.mtm_history[-1]} : {trade.calculate_pnl_normalized(test_mktdata['close'][i])} ")
     #Check the result
     assert len(trade_book_keeper_agent.outstanding_long_position_list) == 0
     assert len(trade_book_keeper_agent.archive_long_positions_list) == 1
@@ -150,7 +150,7 @@ def test_tradesignal_long_with_roi(get_test_ascending_mkt_data) -> None:
     logger.info(pnl_config.roi)
     mtm = trade_book_keeper_agent.calculate_pnl_from_mtm_history()
     assert abs(mtm - expect_mtm )< DATA_MOVEMENT*2/test_mktdata["close"][0]
-
+    assert len(test_mktdata) == len(trade_book_keeper_agent.mtm_history)
     pass
 
 @pytest.mark.skipif("tradesignal_short_with_roi" not in test_cases, reason="Not implemented yet")
@@ -406,5 +406,5 @@ def test_tradesignal_short_with_long_positions(get_test_descending_mkt_data) -> 
     logger.debug(f"first trade pnl:{pnl_first} : {first_trade}")
     logger.debug(f"second trade pnl:{pnl_second} : {second_trade} ")
     
-    logger.debug(trade_book_keeper_agent.mtm_history["mtm"])
+    logger.debug(trade_book_keeper_agent.mtm_history)
     assert abs(total_pnl - total_pnl_expected) < COMPARE_ERROR

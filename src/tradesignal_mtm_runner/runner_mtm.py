@@ -3,8 +3,8 @@ from .interfaces import ITradeSignalRunner
 from .config import PnlCalcConfig
 from .helper import ROI_Helper
 
-from .trade_order import TradeOrderSimulator
-from .models import Mtm_Result
+from .trade_reward import TradeBookKeeperAgent
+from .models import Mtm_Result, Buy_Sell_Action_Enum
 
 import pandas as pd
 import logging
@@ -61,7 +61,7 @@ class Trade_Mtm_Runner(ITradeSignalRunner):
             f"Take profit at {self._take_profit} ; Stop Loss at {self._stop_loss}"
         )
         # Potential to support multiple symbols in the pnl run.
-        self.trade_order_simulator_map: dict[str, TradeOrderSimulator] = {}
+        self.trade_order_simulator_map: dict[str, TradeBookKeeperAgent] = {}
         pass
 
     
@@ -133,16 +133,46 @@ class Trade_Mtm_Runner(ITradeSignalRunner):
             "close_price": close_price.tolist(),
         }
 
-        mtm_reward_history: float = 0
+        
         max_pnl: float = 0
         max_drawdown: float = 0
-        _trade_order_simulator = TradeOrderSimulator(
+
+        _trade_order_agent:TradeBookKeeperAgent = TradeBookKeeperAgent(
             symbol=symbol, pnl_config=self.pnl_config, fixed_unit=True
         )
-        self.trade_order_simulator_map[symbol] = _trade_order_simulator
+        
+        self.trade_order_simulator_map[symbol] = _trade_order_agent
 
+        for i in range(len(signal_dataframe)):
 
+            buy_sell_signal:Buy_Sell_Action_Enum = Buy_Sell_Action_Enum.NEUTRAL
 
+            if buy_signal[i] == 1:
+                buy_sell_signal = Buy_Sell_Action_Enum.BUY
+            elif sell_signal[i] == 1:
+                buy_sell_signal = Buy_Sell_Action_Enum.SELL
+
+            _trade_order_agent.run_at_timestamp(
+                dt=time_line[i],
+                price=close_price[i],
+                price_diff=price_move[i],
+                buy_sell_action=buy_sell_signal,
+            )
+
+            pnl_cum_at_this_moment:float = _trade_order_agent.calculate_pnl_from_mtm_history()
+            max_pnl = max(max_pnl, pnl_cum_at_this_moment)
+            max_drawdown = max(max_drawdown, max_pnl - pnl_cum_at_this_moment)
+            pnl_ts_data["pnl_ratio"][i] = pnl_cum_at_this_moment
+
+        # Summarize the pnl result
+        pnl_ts_data["mtm_ratio"] = _trade_order_agent.mtm_history
+        _trade_order_agent.mtm_history
+        _df = pd.DataFrame.from_dict(data=pnl_ts_data)
+        _df.set_index("timestamp", drop=True, inplace=True)
+        sharpe_ratio, _df_daily = self._calculate_sharpe_ratio(df=_df)
+        _df["timestamp"] = (pd.to_numeric(_df.index) / 1000000).astype("int64")
+        
+        return None
 
         pass
 

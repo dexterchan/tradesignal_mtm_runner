@@ -8,6 +8,7 @@ import heapq
 
 
 #Copy from TradeOrderKeeper
+# deprecated class to be replaced by TradeBookKeeperAgent
 class TradeOrderSimulator:
     """Trade Order keeper keeps all outstanding trades and historical trades
     when Pnl Calculator run through the market data with the buy/sell signals

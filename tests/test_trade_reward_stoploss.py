@@ -61,7 +61,7 @@ def test_stop_loss_long(get_test_descending_mkt_data, get_pnl_config_stoploss) -
     assert trade_book_keeper_agent.calculate_pnl_from_mtm_history() < expected_loss
     assert (-expected_loss - trade_book_keeper_agent.calculate_pnl_from_mtm_history()) < COMPARE_ERROR*2
     logger.debug(trade_book_keeper_agent.calculate_pnl_from_mtm_history())
-    logger.debug(trade_book_keeper_agent.mtm_history["mtm"])
+    logger.debug(trade_book_keeper_agent.mtm_history)
     logger.debug(expected_loss)
     
 
@@ -104,5 +104,5 @@ def test_stop_loss_short(get_test_ascending_mkt_data, get_pnl_config_stoploss) -
     assert trade_book_keeper_agent.calculate_pnl_from_mtm_history() < expected_loss
     assert (-expected_loss - trade_book_keeper_agent.calculate_pnl_from_mtm_history()) < COMPARE_ERROR*2
     logger.debug(trade_book_keeper_agent.calculate_pnl_from_mtm_history())
-    logger.debug(trade_book_keeper_agent.mtm_history["mtm"])
+    logger.debug(trade_book_keeper_agent.mtm_history)
     logger.debug(expected_loss)
