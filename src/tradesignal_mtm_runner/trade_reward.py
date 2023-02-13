@@ -41,7 +41,7 @@ class TradeBookKeeperAgent:
         self.stop_loss:float = pnl_config.stoploss
 
         self._mtm_history = {
-            "timestamp": [], #Integer in ms
+            "timestamp_ms": [], #Integer in ms
             "mtm": [] #float
         }
 
@@ -73,7 +73,7 @@ class TradeBookKeeperAgent:
                 continue
             normalized_mtm = trade.calculate_mtm_normalized(price_diff=price_diff)
             accumulated_mtm += normalized_mtm
-        self._mtm_history["timestamp"].append(convert_datetime_to_ms(dt))
+        self._mtm_history["timestamp_ms"].append(convert_datetime_to_ms(dt))
         self._mtm_history["mtm"].append(accumulated_mtm)
 
         # 2. Check if we need to close any position with ROI in each trade
@@ -325,11 +325,11 @@ class TradeBookKeeperAgent:
             Tuple[float, pd.Dataframe ]: sharpe ratio, Dataframe: column, pnl daily
         """
         df:pd.DataFrame = pd.DataFrame(data = self._mtm_history)
-        df.set_index("timestamp", inplace=True, drop=True)
+        df.set_index("timestamp_ms", inplace=True, drop=True)
 
         #pnl_ts_data_daily: pd.DataFrame = df.resample("1H").sum()
-        period:timedelta = df.index[-1] - df.index[0]
-        time_period_hours: int = (period.total_seconds() / 3600)
+        period_seconds:int = (df.index[-1] - df.index[0])/1000
+        time_period_hours: int = (period_seconds / 3600)
         df["mtm_slippage"] = df["mtm"] - self.PROFIT_SLIPPAGE
         total_profit = df["mtm_slippage"]
         expected_yearly_return = total_profit.sum() / time_period_hours
@@ -339,6 +339,7 @@ class TradeBookKeeperAgent:
             if std_profit != 0
             else MIN_NUMERIC_VALUE  # float("-inf")
         )
+        logger.debug(f"time_period_hours:{time_period_hours}, mtm: {total_profit.sum()}, expected_yearly_return: {expected_yearly_return}, std_profit: {std_profit}, sharpe_ratio: {sharpe_ratio}")
 
         return sharpe_ratio
     

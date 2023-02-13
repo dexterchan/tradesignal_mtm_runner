@@ -52,7 +52,6 @@ class Mtm_Result(BaseModel):
 
     params: dict = Field(default_factory=dict)  # Strategy parameters
     pnl_timeline: dict = Field(default_factory=dict)  # Dict column form of pandas frame
-    pnl_daily: dict = Field(default_factory=dict)  # Dict column form of pandas frame
     long_trades_archive: list[ProxyTrade] = Field(default_factory=list)
     short_trades_archive: list[ProxyTrade] = Field(default_factory=list)
     long_trades_outstanding: list[ProxyTrade] = Field(default_factory=list)

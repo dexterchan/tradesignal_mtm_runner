@@ -169,11 +169,26 @@ class Trade_Mtm_Runner(ITradeSignalRunner):
         _trade_order_agent.mtm_history
         _df = pd.DataFrame.from_dict(data=pnl_ts_data)
         _df.set_index("timestamp", drop=True, inplace=True)
-        sharpe_ratio, _df_daily = self._calculate_sharpe_ratio(df=_df)
+        sharpe_ratio = _trade_order_agent._calculate_sharpe_ratio()
         _df["timestamp"] = (pd.to_numeric(_df.index) / 1000000).astype("int64")
         
-        return None
+        data_in_dict: dict = _df.to_dict(orient="list")
 
-        pass
+        mtm_result: Mtm_Result = Mtm_Result(
+            pnl=_trade_order_agent.calculate_pnl_from_mtm_history(),
+            max_drawdown=max_drawdown,
+            pnl_timeline=data_in_dict,
+            sharpe_ratio=sharpe_ratio,
+        )
+        mtm_result.long_trades_archive.extend(_trade_order_agent.archive_long_positions_list)
+        mtm_result.long_trades_outstanding.extend(
+            _trade_order_agent.outstanding_long_position_list
+        )
+
+        mtm_result.short_trades_archive.extend(_trade_order_agent.archive_short_positions_list)
+        mtm_result.short_trades_oustanding.extend(
+            _trade_order_agent.outstanding_short_position_list
+        )
+        return mtm_result
 
     
