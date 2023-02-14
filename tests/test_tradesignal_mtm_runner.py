@@ -1,7 +1,7 @@
 from tradesignal_mtm_runner.runner_mtm import Trade_Mtm_Runner
 from tradesignal_mtm_runner.config import PnlCalcConfig
 from tradesignal_mtm_runner.interfaces import ITradeSignalRunner
-
+from tradesignal_mtm_runner.models import Mtm_Result
 
 import pytest
 import pandas as pd
@@ -20,6 +20,8 @@ test_cases: list = [
 ]
 DATA_DIM = 200
 DATA_MOVEMENT = 100
+COMPARE_ERROR = 0.1
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -64,6 +66,15 @@ def test_trade_pnl_runner_with_ascending_data(get_test_ascending_mkt_data,get_pn
     
     for i, p in enumerate(_price_movement["price_movement"][1:]):
         assert p == DATA_MOVEMENT
+
+    print(buy_signal)
+    mtm_result:Mtm_Result = pnl_calculator.calculate(
+        buy_signal_dataframe=buy_signal,
+        sell_signal_dataframe=sell_signal,
+        symbol=test_symbol,
+    )
+
+    # assert (mtm_result.pnl - pnl) < COMPARE_ERROR
 
     
 

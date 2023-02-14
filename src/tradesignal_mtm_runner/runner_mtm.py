@@ -6,6 +6,8 @@ from .helper import ROI_Helper
 from .trade_reward import TradeBookKeeperAgent
 from .models import Mtm_Result, Buy_Sell_Action_Enum
 
+from .models import MIN_NUMERIC_VALUE, MAX_NUMERIC_VALUE
+
 import pandas as pd
 import logging
 
@@ -122,7 +124,7 @@ class Trade_Mtm_Runner(ITradeSignalRunner):
         close_price = signal_dataframe["close"].to_numpy(dtype=float)
         buy_signal = signal_dataframe["buy"].to_numpy(dtype=int)
         sell_signal = signal_dataframe["sell"].to_numpy(dtype=int)
-        time_line = signal_dataframe.index.to_numpy(dtype="datetime64")
+        time_line = signal_dataframe.index
         price_move = signal_dataframe["price_movement"].to_numpy(dtype=float)
 
         pnl_ts_data: dict[str, list] = {
@@ -145,7 +147,7 @@ class Trade_Mtm_Runner(ITradeSignalRunner):
 
         for i in range(len(signal_dataframe)):
 
-            buy_sell_signal:Buy_Sell_Action_Enum = Buy_Sell_Action_Enum.NEUTRAL
+            buy_sell_signal:Buy_Sell_Action_Enum = Buy_Sell_Action_Enum.HOLD
 
             if buy_signal[i] == 1:
                 buy_sell_signal = Buy_Sell_Action_Enum.BUY
@@ -192,3 +194,34 @@ class Trade_Mtm_Runner(ITradeSignalRunner):
         return mtm_result
 
     
+class HyperOptPnlCalculator_Adapter(ITradeSignalRunner):
+    def __init__(self, calculator: ITradeSignalRunner) -> None:
+        self._calculator: ITradeSignalRunner = calculator
+
+
+    def calculate(
+        self,
+        symbol: str,
+        buy_signal_dataframe: pd.DataFrame,
+        sell_signal_dataframe: pd.DataFrame,
+    ) -> Mtm_Result:
+        """[summary]
+
+        Args:
+            symbol (str): [description]
+            buy_signal_dataframe (pd.DataFrame): [description]
+            sell_signal_dataframe (pd.DataFrame): [description]
+
+        Returns:
+            Mtm_Result: [description]
+        """
+        mtm_result:Mtm_Result = self._calculator.calculate(
+            symbol=symbol,
+            buy_signal_dataframe=buy_signal_dataframe,
+            sell_signal_dataframe=sell_signal_dataframe,
+        )
+        if abs(mtm_result.pnl) < 0.000000000001:
+            mtm_result.pnl = MIN_NUMERIC_VALUE
+            mtm_result.max_drawdown = MAX_NUMERIC_VALUE
+
+        return mtm_result
