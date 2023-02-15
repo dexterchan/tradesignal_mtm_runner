@@ -1,4 +1,6 @@
 from __future__ import annotations
+from typing import  Dict
+
 from pydantic import BaseModel, Field
 
 import numpy as np
@@ -6,7 +8,7 @@ from enum import Enum
 from datetime import datetime
 from .exceptions import TradeNotYetClosedForPnlError, InvalidTradeStateError
 import logging
-from typing import Dict
+
 
 logger = logging.getLogger(__name__)
 
@@ -32,31 +34,6 @@ class Inventory_Mode(str, Enum):
     LIFO = "L"
     FIFO = "F"
     WORST_PRICE = "W"
-
-class Mtm_Result(BaseModel):
-    """ Class containing Mtm Result
-    """
-    strategy_id: str = None
-    batch_id: str = None
-    data_key: str = None
-    strategy_name: str = None
-
-    pnl: float = np.nan
-    max_drawdown: float = np.nan
-    sharpe_ratio: float = Field(default=np.nan)
-
-    mkt_start_epoch: int = 0
-    mkt_end_epoch: int = 0
-    run_start_epoch: int = 0
-    run_end_epoch: int = 0
-
-    params: dict = Field(default_factory=dict)  # Strategy parameters
-    pnl_timeline: dict = Field(default_factory=dict)  # Dict column form of pandas frame
-    long_trades_archive: list[ProxyTrade] = Field(default_factory=list)
-    short_trades_archive: list[ProxyTrade] = Field(default_factory=list)
-    long_trades_outstanding: list[ProxyTrade] = Field(default_factory=list)
-    short_trades_oustanding: list[ProxyTrade] = Field(default_factory=list)
-    calc_log_folder: str = None
 
 
 class ProxyTrade(BaseModel):
@@ -190,3 +167,81 @@ class ProxyTrade(BaseModel):
     #         [type]: [description]
     #     """
     #     return not self.__lt__(other=other)
+
+
+class Mtm_Result(BaseModel):
+    """ Class containing Mtm Result
+    """
+    strategy_id: str = None
+    batch_id: str = None
+    data_key: str = None
+    strategy_name: str = None
+
+    pnl: float = np.nan
+    max_drawdown: float = np.nan
+    sharpe_ratio: float = Field(default=np.nan)
+
+    mkt_start_epoch: int = 0
+    mkt_end_epoch: int = 0
+    run_start_epoch: int = 0
+    run_end_epoch: int = 0
+
+    params: dict = Field(default_factory=dict)  # Strategy parameters
+    pnl_timeline: dict = Field(default_factory=dict)  # Dict column form of pandas frame
+    long_trades_archive: list[ProxyTrade] = Field(default_factory=list)
+    short_trades_archive: list[ProxyTrade] = Field(default_factory=list)
+    long_trades_outstanding: list[ProxyTrade] = Field(default_factory=list)
+    short_trades_oustanding: list[ProxyTrade] = Field(default_factory=list)
+    calc_log_folder: str = None
+
+    def to_Dict(self) -> Dict:
+        pdict: Dict = self.dict()
+        pdict["long_trades_archive_size"] = len(self.long_trades_archive)
+        pdict["short_trades_archive_size"] = len(self.short_trades_archive)
+        pdict["long_trades_outstanding_size"] = len(self.long_trades_outstanding)
+        pdict["short_trades_outstanding_size"] = len(self.short_trades_oustanding)
+        return pdict
+
+    def to_query_dict(self) -> Dict:
+        fields_queryable = [
+            "batch_id",
+            "data_key",
+            "strategy_name",
+            "strategy_id",
+            "pnl",
+            "max_drawdown",
+            "sharpe_ratio",
+            "mkt_start_epoch",
+            "mkt_end_epoch",
+            "run_start_epoch",
+            "run_end_epoch",
+            "long_trades_archive_size",
+            "short_trades_archive_size",
+            "long_trades_outstanding_size",
+            "short_trades_outstanding_size",
+        ]
+        _d = self.to_Dict()
+        return {k: _d[k] for k in fields_queryable}
+
+    def to_json_str(self) -> str:
+        from datetime import datetime
+        import json
+
+        def _json_serial(obj):
+            """JSON serializer for objects not serializable by default json code"""
+            if isinstance(obj, (datetime)):
+                return obj.isoformat()
+
+        pdict: Dict = self.to_Dict()
+        return json.dumps(pdict, default=_json_serial)
+
+    def __repr__(self) -> str:
+        return "Id:{}, pnl: {:.4f}, sharpe_ratio: {:.4f}, max_drawdown:{:.4f}, Parameters{}".format(
+            self.strategy_id,
+            self.pnl,
+            self.sharpe_ratio,
+            self.max_drawdown,
+            self.params,
+        )
+
+
