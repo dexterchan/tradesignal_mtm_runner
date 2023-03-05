@@ -32,6 +32,7 @@ class PnlCalcConfig(BaseModel):
     fixed_stake_unit_amount: float = 100
     enable_short_position: bool = False
     max_position_per_symbol: int = 1
+    fee_rate: float = 0
 
     @classmethod
     def get_default(cls) -> PnlCalcConfig:

@@ -20,6 +20,7 @@ class TradeBookKeeperAgent:
         - For each outstanding trade, run through ROI at t with p(t) to see if we close the trade
         - For each outstanding trade, run through stop/loss at t with p(t) to see of we close the trade
         - handle buy/sell position at t with p(t) and s(t)
+        - adjust mtm(t) from the fee rate charged by the trades's action at t
 
         at any time t, we would work out Sharpe ratio with mtm(t)
     """
@@ -48,6 +49,7 @@ class TradeBookKeeperAgent:
         self.roi_helper = ROI_Helper(pnl_config.roi)
         self.inventory_mode = Inventory_Mode.FIFO
         self.PROFIT_SLIPPAGE: float = 0.000001
+        self.fee_rate_from_pnl_config: float = pnl_config.fee_rate
         pass
 
     @property
@@ -64,28 +66,28 @@ class TradeBookKeeperAgent:
             price_diff(float): price diff = price(t) - price(t-1
             buy_sell_action (Buy_Sell_Action_Enum): Buy/Sell/Hold
         """
-
+        accumulated_fee:float = 0
         # 1. Calculate MTM
-        accumulated_mtm = 0
+        mtm_at_time_t = 0
         for trade in (self.outstanding_long_position_list + self.outstanding_short_position_list):
             if dt<=trade.entry_datetime or (trade.exit_datetime is not None and trade.exit_datetime<dt):
                 logger.debug(f"exclude {trade.entry_datetime} <= {dt}")
                 continue
             normalized_mtm = trade.calculate_mtm_normalized(price_diff=price_diff)
-            accumulated_mtm += normalized_mtm
+            mtm_at_time_t += normalized_mtm
         self._mtm_history["timestamp_ms"].append(convert_datetime_to_ms(dt))
-        self._mtm_history["mtm"].append(accumulated_mtm)
+        
 
         # 2. Check if we need to close any position with ROI in each trade
         # a. Long position
-        self._check_if_roi_close_position(
+        accumulated_fee += self._check_if_roi_close_position(
             price=price,
             dt=dt,
             live_positions=self.outstanding_long_position_list,
             archive_positions=self.archive_long_positions_list,
         )
         # b. Short position
-        self._check_if_roi_close_position(
+        accumulated_fee += self._check_if_roi_close_position(
             price=price,
             dt=dt,
             live_positions=self.outstanding_short_position_list,
@@ -94,14 +96,14 @@ class TradeBookKeeperAgent:
 
         #3. Check if we need to close any position with stop/loss in each trade
         # a. Long position
-        self._check_if_stop_loss_close_position(
+        accumulated_fee += self._check_if_stop_loss_close_position(
             price=price,
             dt=dt,
             live_positions=self.outstanding_long_position_list,
             archive_positions=self.archive_long_positions_list,
         )
         # b. Short position
-        self._check_if_stop_loss_close_position(
+        accumulated_fee += self._check_if_stop_loss_close_position(
             price=price,
             dt=dt,
             live_positions=self.outstanding_short_position_list,
@@ -110,7 +112,7 @@ class TradeBookKeeperAgent:
 
         #4. Check if we need to open any position with s(t) and p(t) with buy signal
         if buy_sell_action == Buy_Sell_Action_Enum.BUY:
-            self._check_if_open_buy_position(
+            accumulated_fee += self._check_if_open_buy_position(
                 price=price,
                 dt=dt,
                 live_long_positions=self.outstanding_long_position_list,
@@ -118,7 +120,7 @@ class TradeBookKeeperAgent:
                 archive_short_positions=self.archive_short_positions_list
             )
         elif buy_sell_action == Buy_Sell_Action_Enum.SELL:
-            self._check_if_open_sell_position(
+            accumulated_fee += self._check_if_open_sell_position(
                 price=price,
                 dt=dt,
                 live_short_positions=self.outstanding_short_position_list,
@@ -126,10 +128,13 @@ class TradeBookKeeperAgent:
                 archive_long_positions=self.archive_long_positions_list
             )
             
+        #5. Adjust MTM with fee rate
+        #Store the final mtm values
+        self._mtm_history["mtm"].append(mtm_at_time_t - accumulated_fee)
             
         pass
 
-    def _check_if_roi_close_position(self, price: float, dt: datetime, live_positions:list[ProxyTrade], archive_positions:list[ProxyTrade]) -> None:
+    def _check_if_roi_close_position(self, price: float, dt: datetime, live_positions:list[ProxyTrade], archive_positions:list[ProxyTrade]) -> float:
        
         """ Check if we can close the position with ROI
 
@@ -138,7 +143,11 @@ class TradeBookKeeperAgent:
             dt (datetime): time stamp
             live_positions (list[ProxyTrade]): Live position list
             archive_positions (list[ProxyTrade]): archive position list
+        
+        Returns:
+            fee_rate (float): adjusted fee
         """
+        accum_fee:float = 0
         for trade in live_positions:
             cur_pnl:float = trade.calculate_pnl_normalized(price = price)
             if self.roi_helper.can_take_profit(entry_date=trade.entry_datetime,current_date=dt, normalized_pnl=cur_pnl):
@@ -151,12 +160,13 @@ class TradeBookKeeperAgent:
                     live_positions=live_positions,
                     close_reason=Proxy_Trade_Actions.ROI
                 )
+                accum_fee += trade.fee_normalized
                 logger.info(f"Close trade with ROI:{trade}")
                 
 
-        pass
+        return accum_fee
 
-    def _check_if_stop_loss_close_position(self, price: float, dt: datetime, live_positions:list[ProxyTrade], archive_positions:list[ProxyTrade]) -> None:
+    def _check_if_stop_loss_close_position(self, price: float, dt: datetime, live_positions:list[ProxyTrade], archive_positions:list[ProxyTrade]) -> float:
         """ Check if we can close the position with stop/loss
 
         Args:
@@ -164,7 +174,11 @@ class TradeBookKeeperAgent:
             dt (datetime): time stamp
             live_positions (list[ProxyTrade]): Live position list
             archive_positions (list[ProxyTrade]): archive position list
+        
+        Returns:
+            fee_rate (float): adjusted fee
         """
+        accum_fee:float = 0
         for trade in live_positions:
             cur_pnl:float = trade.calculate_pnl_normalized(price = price)
 
@@ -180,7 +194,9 @@ class TradeBookKeeperAgent:
                     live_positions=live_positions,
                     close_reason=Proxy_Trade_Actions.STOP_LOSS
                 )
-        pass
+                accum_fee += trade.fee_normalized
+
+        return accum_fee
 
     def _check_if_open_buy_position(
         self,
@@ -189,7 +205,7 @@ class TradeBookKeeperAgent:
         live_long_positions:list[ProxyTrade],
         live_short_positions:list[ProxyTrade],
         archive_short_positions:list[ProxyTrade]
-        )->None:
+        )->float:
         """ Check if we can open a long position
         Args:
             price (float): price at the timestamp
@@ -197,6 +213,8 @@ class TradeBookKeeperAgent:
             live_long_positions (list[ProxyTrade]): Live long position list
             live_short_positions (list[ProxyTrade]): Live short position list
             archive_short_positions (list[ProxyTrade]): archive short position list
+        Returns:
+            fee_rate (float): adjusted fee
         """
 
         # 1. Check if we reach max position
@@ -219,7 +237,7 @@ class TradeBookKeeperAgent:
                     live_positions=live_short_positions,
                     close_reason=Proxy_Trade_Actions.SIGNAL
                 )
-            return
+            return trade.fee_normalized
 
         # 4. Open a new position
         trade = ProxyTrade(
@@ -229,10 +247,11 @@ class TradeBookKeeperAgent:
             inventory_mode=self.inventory_mode,
             direction=LongShort_Enum.LONG,
             unit=self.fixed_unit,
+            fee_rate=self.fee_rate_from_pnl_config
         )
         live_long_positions.append(trade)
 
-        pass
+        return trade.fee_normalized
 
     def _check_if_open_sell_position(self,
         price: float,   
@@ -240,7 +259,7 @@ class TradeBookKeeperAgent:
         live_short_positions:list[ProxyTrade],
         live_long_positions:list[ProxyTrade],
         archive_long_positions:list[ProxyTrade]
-        )->None:
+        )->float:
         """ Check if we can open a short position
         Args:
             price (float): price at the timestamp
@@ -248,6 +267,8 @@ class TradeBookKeeperAgent:
             live_short_positions (list[ProxyTrade]): Live short position list
             live_long_positions (list[ProxyTrade]): Live long position list
             archive_long_positions (list[ProxyTrade]): archive long position list
+        Returns:
+            fee_rate (float): adjusted fee
         """
         # 1. Check if we reach max position
         if len(live_short_positions) >= self.max_position_per_symbol:
@@ -270,7 +291,7 @@ class TradeBookKeeperAgent:
                     live_positions=live_long_positions,
                     close_reason=Proxy_Trade_Actions.SIGNAL
                 )
-            return
+            return trade.fee_normalized
 
         # 4. Open a new position
         logger.info(f"Open a new short position")
@@ -281,10 +302,11 @@ class TradeBookKeeperAgent:
             inventory_mode=self.inventory_mode,
             direction=LongShort_Enum.SHORT,
             unit=self.fixed_unit,
+            fee_rate=self.fee_rate_from_pnl_config
         )
         live_short_positions.append(trade)
 
-        pass
+        return trade.fee_normalized
 
     def _get_trade_to_close(self, long_short:LongShort_Enum) -> ProxyTrade:
         """ Get the trade to close

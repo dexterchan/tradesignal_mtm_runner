@@ -41,7 +41,8 @@ def test_stop_loss_long(get_test_descending_mkt_data, get_pnl_config_stoploss) -
             entry_datetime=test_mktdata.index[start],
             unit=100,
             direction=LongShort_Enum.LONG,
-            inventory_mode=Inventory_Mode.FIFO
+            inventory_mode=Inventory_Mode.FIFO,
+            fee_rate=0.00
         )
     #Run through the market data
     for i in range(1, len(test_mktdata)):
@@ -84,7 +85,8 @@ def test_stop_loss_short(get_test_ascending_mkt_data, get_pnl_config_stoploss) -
             entry_datetime=test_mktdata.index[start],
             unit=100,
             direction=LongShort_Enum.SHORT,
-            inventory_mode=Inventory_Mode.FIFO
+            inventory_mode=Inventory_Mode.FIFO,
+            fee_rate=0.00
         )
     #Run through the market data
     for i in range(1, len(test_mktdata)):

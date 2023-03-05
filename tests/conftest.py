@@ -55,22 +55,3 @@ def get_test_descending_mkt_data() -> pd.DataFrame:
 
     return _get_data
 
-from tradesignal_mtm_runner.config import PnlCalcConfig
-from tradesignal_mtm_runner.interfaces import ITradeSignalRunner
-from tradesignal_mtm_runner.runner import Trade_Runner
-
-@pytest.fixture
-def get_pnl_calculator():
-    def __get_pnl_calculator(exchange: str,
-        is_hyperopt: bool = False,
-        enable_short_position: bool = False,
-        pnl_config: PnlCalcConfig = PnlCalcConfig.get_default()) -> ITradeSignalRunner:
-
-        calculator: ITradeSignalRunner = Trade_Runner(
-            pnl_config=pnl_config
-        )
-
-        return calculator
-    return __get_pnl_calculator
-
-

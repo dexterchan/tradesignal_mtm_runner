@@ -48,7 +48,7 @@ class ProxyTrade(BaseModel):
     close_reason: Proxy_Trade_Actions = Field(default=None)
     mtm_history: list[float] = Field(default_factory=list)
     inventory_mode:Inventory_Mode = Field(default=Inventory_Mode.WORST_PRICE)
-    fee: float = Field(default=0.01)
+    fee_rate: float = Field(default=0.01)
 
     @property
     def check_closed(self) -> bool:
@@ -85,6 +85,15 @@ class ProxyTrade(BaseModel):
         mtm = price_diff if self.direction == LongShort_Enum.LONG else -price_diff
         #return mtm
         return mtm / self.entry_price
+    
+    @property
+    def fee_normalized(self) -> float:
+        """ calculate normalized fee
+
+        Returns:
+            float: fee adjusted
+        """
+        return self.fee_rate 
 
     @property
     def pnl(self) -> float:
@@ -104,7 +113,12 @@ class ProxyTrade(BaseModel):
 
     @property
     def pnl_normalized(self) -> float:
-        return self.pnl / self.entry_price
+        #adjusted by fee when buy
+        accum_pnl = self.pnl / self.entry_price - self.fee_normalized
+        if self.is_closed:
+            #adjusted by fee when sell
+            accum_pnl -= self.fee_normalized
+        return accum_pnl
 
     def close_position(
         self, exit_price: float, exit_datetime: datetime, close_reason: Proxy_Trade_Actions

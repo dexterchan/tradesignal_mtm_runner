@@ -99,3 +99,23 @@ bump_version_minor:
 
 bump_version_major:
 	bump2version major --allow-dirty 
+
+
+install_conda_tools:
+	conda install anaconda-client -y 
+	conda install conda-build -y
+
+build_conda:
+	rm -Rf conda-out/*
+	conda build --output-folder ./conda-out/ ./conda/
+	conda build purge
+	#upload_file=$(find conda-out -name "*-lib*.tar.bz2")
+
+	# conda convert --platform linux-64 ${upload_file} -o ./conda-out
+
+	# upload_osx_64=$(find conda-out -name "*-lib*.tar.bz2" | grep osx)
+	# anaconda upload --force ${upload_osx_64}
+
+	upload_linux_64=$(find conda-out -name "*-lib*.tar.bz2" | grep linux)
+	anaconda upload --force ${upload_linux_64}
+

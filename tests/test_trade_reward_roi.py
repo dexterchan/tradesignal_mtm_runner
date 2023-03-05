@@ -54,7 +54,8 @@ def test_mtm_history_consistency_with_close_trade(get_test_ascending_mkt_data) -
             entry_datetime=test_mktdata.index[start_index],
             unit=100,
             direction=LongShort_Enum.LONG,
-            inventory_mode=Inventory_Mode.FIFO
+            inventory_mode=Inventory_Mode.FIFO,
+            fee_rate=0
         )
     
     
@@ -105,7 +106,8 @@ def test_mtm_history_consistency(get_test_ascending_mkt_data) -> None:
             entry_datetime=test_mktdata.index[0],
             unit=100,
             direction=LongShort_Enum.LONG,
-            inventory_mode=Inventory_Mode.FIFO
+            inventory_mode=Inventory_Mode.FIFO,
+            fee_rate=0
         )
     p2:ProxyTrade = ProxyTrade(
             symbol=test_symbol,
@@ -113,7 +115,8 @@ def test_mtm_history_consistency(get_test_ascending_mkt_data) -> None:
             entry_datetime=test_mktdata.index[inx],
             unit=100,
             direction=LongShort_Enum.LONG,
-            inventory_mode=Inventory_Mode.FIFO
+            inventory_mode=Inventory_Mode.FIFO,
+            fee_rate=0
         )
     
     
@@ -159,7 +162,8 @@ def test_roi_not_close_long_position(get_test_ascending_mkt_data) -> None:
             entry_datetime=test_mktdata.index[0],
             unit=100,
             direction=LongShort_Enum.LONG,
-            inventory_mode=Inventory_Mode.FIFO
+            inventory_mode=Inventory_Mode.FIFO,
+            fee_rate=0
         )
     trade_book_keeper_agent.outstanding_long_position_list.append(p)
     
@@ -195,7 +199,8 @@ def test_roi_close_long_position(get_test_ascending_mkt_data) -> None:
             entry_datetime=test_mktdata.index[0],
             unit=100,
             direction=LongShort_Enum.LONG,
-            inventory_mode=Inventory_Mode.FIFO
+            inventory_mode=Inventory_Mode.FIFO,
+            fee_rate=0
         )
     trade_book_keeper_agent.outstanding_long_position_list.append(p)
     time = test_mktdata.index[inx]
@@ -239,7 +244,8 @@ def test_roi_not_close_short_position(get_test_ascending_mkt_data) -> None:
             entry_datetime=test_mktdata.index[0],
             unit=100,
             direction=LongShort_Enum.SHORT,
-            inventory_mode=Inventory_Mode.FIFO
+            inventory_mode=Inventory_Mode.FIFO,
+            fee_rate=0
         )
     trade_book_keeper_agent.outstanding_short_position_list.append(p)
     for i in range(len(test_mktdata)):
@@ -277,7 +283,8 @@ def test_roi_close_short_position(get_test_descending_mkt_data) -> None:
             entry_datetime=test_mktdata.index[0],
             unit=100,
             direction=LongShort_Enum.SHORT,
-            inventory_mode=Inventory_Mode.FIFO
+            inventory_mode=Inventory_Mode.FIFO,
+            fee_rate=0
         )
     trade_book_keeper_agent.outstanding_short_position_list.append(p)
     logger.debug(test_mktdata["close"][inx])
