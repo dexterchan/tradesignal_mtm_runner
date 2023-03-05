@@ -63,10 +63,14 @@ class ProxyTrade(BaseModel):
         Returns:
             float: [description]
         """
-        if self.direction == LongShort_Enum.LONG:
-            return price - self.entry_price
-        else:
-            return self.entry_price - price
+        pnl_value: float = price - self.entry_price if self.direction == LongShort_Enum.LONG else self.entry_price - price
+        #adjusted by fee when entered
+        pnl_value -= self.fee_rate * self.entry_price
+        #adjusted by fee when closed
+        if self.is_closed:
+            pnl_value -= self.fee_rate * self.exit_price
+        
+        return pnl_value
 
     def calculate_pnl_normalized(self, price: float) -> float:
         return self.calculate_pnl(price=price) / self.entry_price
@@ -113,12 +117,7 @@ class ProxyTrade(BaseModel):
 
     @property
     def pnl_normalized(self) -> float:
-        #adjusted by fee when buy
-        accum_pnl = self.pnl / self.entry_price - self.fee_normalized
-        if self.is_closed:
-            #adjusted by fee when sell
-            accum_pnl -= self.fee_normalized
-        return accum_pnl
+        return self.calculate_pnl_normalized(price=self.exit_price)
 
     def close_position(
         self, exit_price: float, exit_datetime: datetime, close_reason: Proxy_Trade_Actions

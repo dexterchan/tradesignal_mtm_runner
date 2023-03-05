@@ -55,3 +55,20 @@ def get_test_descending_mkt_data() -> pd.DataFrame:
 
     return _get_data
 
+
+@pytest.fixture
+def get_test_flat_mkt_data() -> pd.DataFrame:
+    def _get_data(dim: int = 10, step:int=100):
+        df = pd.DataFrame(
+            data={
+                "timestamp": pd.date_range(start=datetime.now(),
+                periods=dim,freq=timedelta(hours=1)),
+                "inx": np.arange(dim)
+            })
+        df.set_index("timestamp", inplace=True, drop=True)
+        df["close"] = 1000
+        df["price_movement"] = df["close"].diff()
+        
+        return df
+
+    return _get_data
