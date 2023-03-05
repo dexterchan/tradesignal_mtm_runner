@@ -54,7 +54,7 @@ class ProxyTrade(BaseModel):
     def check_closed(self) -> bool:
         return self.is_closed
 
-    def calculate_pnl(self, price: float) -> float:
+    def calculate_pnl(self, price: float, fee_included:bool=False) -> float:
         """calculate pnl based on the price
 
         Args:
@@ -64,16 +64,18 @@ class ProxyTrade(BaseModel):
             float: [description]
         """
         pnl_value: float = price - self.entry_price if self.direction == LongShort_Enum.LONG else self.entry_price - price
-        #adjusted by fee when entered
-        pnl_value -= self.fee_rate * self.entry_price
-        #adjusted by fee when closed
-        if self.is_closed:
-            pnl_value -= self.fee_rate * self.exit_price
+        
+        if fee_included:
+            #adjusted by fee when entered
+            pnl_value -= self.fee_rate * self.entry_price
+            #adjusted by fee when closed
+            if self.is_closed:
+                pnl_value -= self.fee_rate * self.exit_price
         
         return pnl_value
 
-    def calculate_pnl_normalized(self, price: float) -> float:
-        return self.calculate_pnl(price=price) / self.entry_price
+    def calculate_pnl_normalized(self, price: float, fee_included:bool=False) -> float:
+        return self.calculate_pnl(price=price, fee_included=fee_included) / self.entry_price
 
     def calculate_mtm_normalized(self, price_diff: float) -> float:
         """ calculate mtm from the price difference p(t) - p(t-1)
@@ -113,11 +115,11 @@ class ProxyTrade(BaseModel):
         if not self.is_closed:
             logger.error("Trade not yet closed")
             raise TradeNotYetClosedForPnlError("Trade is not yet closed... Invalid PNL")
-        return self.calculate_pnl(price=self.exit_price)
+        return self.calculate_pnl(price=self.exit_price, fee_included=True)
 
     @property
     def pnl_normalized(self) -> float:
-        return self.calculate_pnl_normalized(price=self.exit_price)
+        return self.calculate_pnl_normalized(price=self.exit_price, fee_included=True)
 
     def close_position(
         self, exit_price: float, exit_datetime: datetime, close_reason: Proxy_Trade_Actions

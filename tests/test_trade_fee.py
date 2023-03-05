@@ -61,7 +61,7 @@ def test_trade_pnl_runner_with_flat_data_noclose(get_test_flat_mkt_data, get_pnl
     assert len(trade_book_keeper_agent.archive_long_positions_list) == 0
     agent_mtm:float = trade_book_keeper_agent.calculate_pnl_from_mtm_history()
     assert (agent_mtm == -FEE_RATE)
-    assert trade_book_keeper_agent.outstanding_long_position_list[0].calculate_pnl_normalized(test_mktdata["close"][0]) == agent_mtm
+    assert trade_book_keeper_agent.outstanding_long_position_list[0].calculate_pnl_normalized(test_mktdata["close"][0], True) == agent_mtm
 
     pass
 
@@ -138,10 +138,14 @@ def test_trade_pnl_runner_with_ascending_data_close(get_test_ascending_mkt_data,
 
     trade:ProxyTrade = trade_book_keeper_agent.archive_long_positions_list[0]
     agent_mtm:float = trade_book_keeper_agent.calculate_pnl_from_mtm_history()
-    expected_mtm = (test_mktdata["close"][inx] / test_mktdata["close"][0]) -1 - 2*FEE_RATE
-    assert abs(expected_mtm - agent_mtm) < 0.001
+    expected_pnl = (test_mktdata["close"][inx] / test_mktdata["close"][0]) -1 - 2*FEE_RATE
+    assert abs(expected_pnl - agent_mtm) < 0.001
     
-    assert (reduce ( lambda x,y:x+y,trade_book_keeper_agent.mtm_history  ) -  expected_mtm) < 0.001
+    assert abs(reduce ( lambda x,y:x+y,trade_book_keeper_agent.mtm_history  ) -  expected_pnl) < 0.001
+    print(trade)
+    print(trade.pnl_normalized)
+    print(expected_pnl)
+    #assert abs( expected_pnl - trade.pnl_normalized) < 0.001
     
 
 
