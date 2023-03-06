@@ -1,0 +1,18 @@
+package:
+  name: "tradesignal_mtm_runner"
+  version: "0.2.0"
+about:
+  summary: "This is an trade signal pnl/mtm calculation Python library"
+source:
+  path: ..
+requirements:
+  host:
+    - python
+    - setuptools
+  build:
+    - python
+    - setuptools
+  run:
+    - python
+    - pandas==1.5.2
+    - pydantic==1.10.2

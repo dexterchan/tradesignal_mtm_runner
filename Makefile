@@ -109,13 +109,13 @@ build_conda:
 	rm -Rf conda-out/*
 	conda build --output-folder ./conda-out/ ./conda/
 	conda build purge
-	#upload_file=$(find conda-out -name "*-lib*.tar.bz2")
+	upload_file=$(find conda-out -name "*.tar.bz2")
 
-	# conda convert --platform linux-64 ${upload_file} -o ./conda-out
+	conda convert --platform linux-64 ${upload_file} -o ./conda-out
 
-	# upload_osx_64=$(find conda-out -name "*-lib*.tar.bz2" | grep osx)
-	# anaconda upload --force ${upload_osx_64}
+	upload_osx_64=$(find conda-out -name "*.tar.bz2" | grep osx)
+	anaconda upload --force ${upload_osx_64}
 
-	upload_linux_64=$(find conda-out -name "*-lib*.tar.bz2" | grep linux)
+	upload_linux_64=$(find conda-out -name "*.tar.bz2" | grep linux)
 	anaconda upload --force ${upload_linux_64}
 

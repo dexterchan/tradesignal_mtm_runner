@@ -6,6 +6,7 @@ from tradesignal_mtm_runner.models import Mtm_Result
 import pytest
 import pandas as pd
 import numpy as np
+from functools import reduce
 
 test_exchange = "kraken"
 test_symbol = "ETHUSD"
@@ -74,7 +75,12 @@ def test_trade_pnl_runner_with_ascending_data(get_test_ascending_mkt_data,get_pn
         symbol=test_symbol,
     )
 
-    # assert (mtm_result.pnl - pnl) < COMPARE_ERROR
+    assert abs(mtm_result.pnl - pnl) < COMPARE_ERROR
+    assert mtm_result.pnl != 0
+    mtm_reward_history = mtm_result.pnl_timeline["mtm_ratio"]
+    assert len(mtm_reward_history) > 0
+    mtm_reward_sum = reduce(lambda x, y: x + y, mtm_reward_history)
+    assert abs(mtm_reward_sum - mtm_result.pnl) < COMPARE_ERROR
 
     
 
