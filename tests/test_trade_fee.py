@@ -108,7 +108,8 @@ def test_trade_pnl_runner_with_ascending_data_close(get_test_ascending_mkt_data,
     start = int(DATA_DIM * 0.2)
     inx = int(DATA_DIM * 0.5)
     pnl_config.roi = {
-        inx: ((test_mktdata["close"][inx-1])/test_mktdata["close"][0] -1 ) 
+        #inx: ((test_mktdata["close"][inx-1])/test_mktdata["close"][0] -1 ) 
+        inx: ((inx)*DATA_MOVEMENT-1)/test_mktdata["close"][0]
     }
     logger.info(pnl_config.roi)
     logger.info(test_mktdata)
