@@ -54,8 +54,7 @@ lint/black: ## check style with black
 
 lint: lint/flake8 lint/black ## check style
 
-test: ## run tests quickly with the default Python
-	pytest
+
 
 test-all: ## run tests on every Python version with tox
 	tox
@@ -119,3 +118,7 @@ build_conda:
 	upload_linux_64=$(find conda-out -name "*.tar.bz2" | grep linux)
 	anaconda upload --force ${upload_linux_64}
 
+
+test: export PYTHONPATH=$(shell pwd)/src
+test: ## run tests quickly with the default Python
+	pytest tests

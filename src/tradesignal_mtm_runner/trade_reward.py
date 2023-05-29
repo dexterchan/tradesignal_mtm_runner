@@ -220,7 +220,7 @@ class TradeBookKeeperAgent:
         # 1. Check if we reach max position
         if len(live_long_positions) >= self.max_position_per_symbol:
             logger.info(f"Reach max position {self.max_position_per_symbol}")
-            return
+            return 0
 
         # 2. Credit line checking: Check if we have enough cash to open a position
         # ignored right now
@@ -273,7 +273,7 @@ class TradeBookKeeperAgent:
         # 1. Check if we reach max position
         if len(live_short_positions) >= self.max_position_per_symbol:
             logger.info(f"Reach max position {self.max_position_per_symbol}")
-            return  
+            return 0
 
         # 2. Credit line checking: Check if we have enough cash to open a position
         # ignored right now

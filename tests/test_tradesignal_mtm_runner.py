@@ -46,10 +46,10 @@ def get_pnl_calculator():
 def test_trade_pnl_runner_with_ascending_data(get_test_ascending_mkt_data,get_pnl_calculator) -> None:
     test_mktdata: pd.DataFrame = get_test_ascending_mkt_data(dim=DATA_DIM, step=DATA_MOVEMENT)
     # Buy at row 2 and sell at row 80
-    buy_signal = test_mktdata.copy()
-    buy_signal["buy"] = np.where(test_mktdata["inx"] == 2, 1, np.nan)
-    sell_signal = test_mktdata.copy()
-    sell_signal["sell"] = np.where(test_mktdata["inx"] == 80, 1, np.nan)
+    trade_signal = test_mktdata.copy()
+    trade_signal["buy"] = np.where(test_mktdata["inx"] == 2, 1, np.nan)
+    #sell_signal = test_mktdata.copy()
+    trade_signal["sell"] = np.where(test_mktdata["inx"] == 80, 1, np.nan)
     pnl = (
         test_mktdata.iloc[80]["close"] - test_mktdata.iloc[2]["close"]
     ) / test_mktdata.iloc[2]["close"]
@@ -61,17 +61,17 @@ def test_trade_pnl_runner_with_ascending_data(get_test_ascending_mkt_data,get_pn
     )
 
     _price_movement = pnl_calculator._prepare_df_for_analysis(
-        buy_signal_dataframe=buy_signal,
-        sell_signal_dataframe=sell_signal,
+        buy_signal_dataframe=trade_signal,
+        sell_signal_dataframe=trade_signal,
     )
     
     for i, p in enumerate(_price_movement["price_movement"][1:]):
         assert p == DATA_MOVEMENT
 
-    print(buy_signal)
+    print(trade_signal)
     mtm_result:Mtm_Result = pnl_calculator.calculate(
-        buy_signal_dataframe=buy_signal,
-        sell_signal_dataframe=sell_signal,
+        buy_signal_dataframe=trade_signal,
+        sell_signal_dataframe=trade_signal,
         symbol=test_symbol,
     )
 
