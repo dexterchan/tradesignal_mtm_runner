@@ -161,7 +161,7 @@ class TradeBookKeeperAgent:
                     close_reason=Proxy_Trade_Actions.ROI
                 )
                 accum_fee += trade.fee_normalized
-                logger.info(f"Close trade with ROI:{trade}")
+                logger.debug(f"Close trade with ROI:{trade}")
                 
 
         return accum_fee
@@ -184,7 +184,7 @@ class TradeBookKeeperAgent:
 
             if cur_pnl < -(abs(self.stop_loss)):
                 # Close the trade
-                logger.info(f"Close trade with stop loss:{trade}  at price {price} pnl:{cur_pnl} - {self.stop_loss}")
+                logger.debug(f"Close trade with stop loss:{trade}  at price {price} pnl:{cur_pnl} - {self.stop_loss}")
                 
                 self._close_trade_position_helper(
                     trade=trade,
@@ -219,7 +219,7 @@ class TradeBookKeeperAgent:
 
         # 1. Check if we reach max position
         if len(live_long_positions) >= self.max_position_per_symbol:
-            logger.info(f"Reach max position {self.max_position_per_symbol}")
+            logger.debug(f"Reach max position {self.max_position_per_symbol}")
             return 0
 
         # 2. Credit line checking: Check if we have enough cash to open a position
@@ -228,7 +228,7 @@ class TradeBookKeeperAgent:
         # 3. Check if we have any short position to close
         if len(live_short_positions) > 0 and (trade:=self._get_trade_to_close(LongShort_Enum.SHORT)) is not None:
             # Close the trade
-            logger.info(f"close {trade} with long signal")
+            logger.debug(f"close {trade} with long signal")
             self._close_trade_position_helper(
                     trade=trade,
                     price=price,
@@ -272,7 +272,7 @@ class TradeBookKeeperAgent:
         """
         # 1. Check if we reach max position
         if len(live_short_positions) >= self.max_position_per_symbol:
-            logger.info(f"Reach max position {self.max_position_per_symbol}")
+            logger.debug(f"Reach max position {self.max_position_per_symbol}")
             return 0
 
         # 2. Credit line checking: Check if we have enough cash to open a position
@@ -281,7 +281,7 @@ class TradeBookKeeperAgent:
         # 3. Check if we have any long position to close
         if len(live_long_positions) > 0 and (trade:=self._get_trade_to_close(LongShort_Enum.LONG)) is not None:
             # Close the trade
-            logger.info(f"close {trade} with short signal")
+            logger.debug(f"close {trade} with short signal")
             
             self._close_trade_position_helper(
                     trade=trade,
@@ -294,7 +294,7 @@ class TradeBookKeeperAgent:
             return trade.fee_normalized
 
         # 4. Open a new position
-        logger.info(f"Open a new short position")
+        logger.debug(f"Open a new short position")
         trade = ProxyTrade(
             symbol=self.symbol,
             entry_datetime=dt,
@@ -317,12 +317,12 @@ class TradeBookKeeperAgent:
         """
         if long_short == LongShort_Enum.LONG and len(self.outstanding_long_position_list) > 0:
             self.outstanding_long_position_list = sorted(self.outstanding_long_position_list)
-            logger.info(f"get trade to close outstanding_long_position_list:{self.outstanding_long_position_list}")
+            logger.debug(f"get trade to close outstanding_long_position_list:{self.outstanding_long_position_list}")
             return self.outstanding_long_position_list.pop(0)
         elif long_short == LongShort_Enum.SHORT and len(self.outstanding_short_position_list) > 0:
             #heapq.heapify(self.outstanding_short_position_list)
             self.outstanding_short_position_list = sorted(self.outstanding_short_position_list)
-            logger.info(f"get trade to close outstanding_short_position_list:{self.outstanding_short_position_list}")
+            logger.debug(f"get trade to close outstanding_short_position_list:{self.outstanding_short_position_list}")
             return self.outstanding_short_position_list.pop(0)
         else:
             return None
@@ -383,9 +383,9 @@ class TradeBookKeeperAgent:
             exit_datetime=dt,
             close_reason=close_reason
         )
-        logger.info(f"Add {trade} to archive: {len(archive_positions)}")
+        logger.debug(f"Add {trade} to archive: {len(archive_positions)}")
         archive_positions.append(trade)
         
         live_positions.remove(trade)
-        logger.info(f"Removed {trade} from live positions {len(live_positions)}")
+        logger.debug(f"Removed {trade} from live positions {len(live_positions)}")
         pass
