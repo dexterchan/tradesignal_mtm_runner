@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import  Dict
+from typing import Dict
 
 from pydantic import BaseModel, Field
 
@@ -15,9 +15,11 @@ logger = logging.getLogger(__name__)
 MAX_NUMERIC_VALUE: float = 1e50
 MIN_NUMERIC_VALUE: float = -1e50
 
+
 class LongShort_Enum(str, Enum):
     LONG = "LONG"
     SHORT = "SHORT"
+
 
 class Buy_Sell_Action_Enum(str, Enum):
     BUY = "B"
@@ -29,6 +31,7 @@ class Proxy_Trade_Actions(str, Enum):
     SIGNAL = "SIGNAL"
     STOP_LOSS = "STOP_LOSS"
     ROI = "ROI"
+
 
 class Inventory_Mode(str, Enum):
     LIFO = "L"
@@ -46,15 +49,15 @@ class ProxyTrade(BaseModel):
     exit_datetime: datetime = Field(default=None)
     is_closed: bool = Field(default=False)
     close_reason: Proxy_Trade_Actions = Field(default=None)
-    mtm_history: list[float] = Field(default_factory=list)
-    inventory_mode:Inventory_Mode = Field(default=Inventory_Mode.WORST_PRICE)
+    # mtm_history: list[float] = Field(default_factory=list)
+    inventory_mode: Inventory_Mode = Field(default=Inventory_Mode.WORST_PRICE)
     fee_rate: float = Field(default=0.01)
 
     @property
     def check_closed(self) -> bool:
         return self.is_closed
 
-    def calculate_pnl(self, price: float, fee_included:bool=False) -> float:
+    def calculate_pnl(self, price: float, fee_included: bool = False) -> float:
         """calculate pnl based on the price
 
         Args:
@@ -63,22 +66,32 @@ class ProxyTrade(BaseModel):
         Returns:
             float: [description]
         """
-        pnl_value: float = price - self.entry_price if self.direction == LongShort_Enum.LONG else self.entry_price - price
-        
+        pnl_value: float = (
+            price - self.entry_price
+            if self.direction == LongShort_Enum.LONG
+            else self.entry_price - price
+        )
+
         if fee_included:
-            #adjusted by fee when entered
+            # adjusted by fee when entered
             pnl_value -= self.fee_rate * self.entry_price
-            #adjusted by fee when closed
+            # adjusted by fee when closed
             if self.is_closed:
-                pnl_value -= self.fee_rate * self.exit_price
-        
+                # Adjust by entry price to be consistent with the reward calculation
+                pnl_value -= self.fee_rate * self.entry_price
+
         return pnl_value
 
-    def calculate_pnl_normalized(self, price: float, fee_included:bool=False) -> float:
-        return self.calculate_pnl(price=price, fee_included=fee_included) / self.entry_price
+    def calculate_pnl_normalized(
+        self, price: float, fee_included: bool = False
+    ) -> float:
+        return (
+            self.calculate_pnl(price=price, fee_included=fee_included)
+            / self.entry_price
+        )
 
     def calculate_mtm_normalized(self, price_diff: float) -> float:
-        """ calculate mtm from the price difference p(t) - p(t-1)
+        """calculate mtm from the price difference p(t) - p(t-1)
 
         Args:
             price_diff (float): price diff between p(t) and p(t-1)
@@ -89,17 +102,17 @@ class ProxyTrade(BaseModel):
         if price_diff is np.nan:
             return 0
         mtm = price_diff if self.direction == LongShort_Enum.LONG else -price_diff
-        #return mtm
+        # return mtm
         return mtm / self.entry_price
-    
+
     @property
     def fee_normalized(self) -> float:
-        """ calculate normalized fee
+        """calculate normalized fee
 
         Returns:
             float: fee adjusted
         """
-        return self.fee_rate 
+        return self.fee_rate
 
     @property
     def pnl(self) -> float:
@@ -122,7 +135,10 @@ class ProxyTrade(BaseModel):
         return self.calculate_pnl_normalized(price=self.exit_price, fee_included=True)
 
     def close_position(
-        self, exit_price: float, exit_datetime: datetime, close_reason: Proxy_Trade_Actions
+        self,
+        exit_price: float,
+        exit_datetime: datetime,
+        close_reason: Proxy_Trade_Actions,
     ) -> None:
         """Operate the closing position process
 
@@ -141,7 +157,7 @@ class ProxyTrade(BaseModel):
 
     def __lt__(self, other: ProxyTrade):
         """Comparator to sort the order of trade by entry price
-            
+
         Args:
             other (ProxyTrade): [description]
 
@@ -161,17 +177,17 @@ class ProxyTrade(BaseModel):
             else:
                 return self.entry_price < other.entry_price
         elif self.inventory_mode == Inventory_Mode.FIFO:
-            #First in first out
-            #return self.entry_datetime > self.entry_datetime
+            # First in first out
+            # return self.entry_datetime > self.entry_datetime
             return self.entry_datetime < self.entry_datetime
         elif self.inventory_mode == Inventory_Mode.LIFO:
-            #Last in First out
-            #return self.entry_datetime < self.entry_datetime
+            # Last in First out
+            # return self.entry_datetime < self.entry_datetime
             return self.entry_datetime > self.entry_datetime
 
     # def __gt__(self, other: ProxyTrade):
     #     """Comparator to sort the order of trade by entry price
-            
+
     #     Args:
     #         other (ProxyTrade): [description]
 
@@ -185,8 +201,8 @@ class ProxyTrade(BaseModel):
 
 
 class Mtm_Result(BaseModel):
-    """ Class containing Mtm Result
-    """
+    """Class containing Mtm Result"""
+
     strategy_id: str = None
     batch_id: str = None
     data_key: str = None
@@ -258,5 +274,3 @@ class Mtm_Result(BaseModel):
             self.max_drawdown,
             self.params,
         )
-
-

@@ -168,7 +168,7 @@ class Trade_Mtm_Runner(ITradeSignalRunner):
 
         # Summarize the pnl result
         pnl_ts_data["mtm_ratio"] = _trade_order_agent.mtm_history
-        _trade_order_agent.mtm_history
+        
         _df = pd.DataFrame.from_dict(data=pnl_ts_data)
         _df.set_index("timestamp", drop=True, inplace=True)
         sharpe_ratio = _trade_order_agent._calculate_sharpe_ratio()
