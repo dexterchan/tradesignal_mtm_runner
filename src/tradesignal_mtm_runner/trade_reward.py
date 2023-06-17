@@ -59,12 +59,23 @@ class TradeBookKeeperAgent:
         pass
 
     @property
-    def mtm_history(self) -> list[float]:
+    def mtm_history_value(self) -> list[float]:
         return self._mtm_history["mtm"]
 
     @property
     def mtm_history_timestamp_ms(self) -> list[int]:
         return self._mtm_history["timestamp_ms"]
+
+    @property
+    def mtm_history_panda_df(self) -> pd.DataFrame:
+        df: pd.DataFrame = pd.DataFrame(
+            data={
+                "timestamp_ms": self.mtm_history_timestamp_ms,
+                "mtm": self.mtm_history_value,
+            }
+        )
+        df["timestamp_ms"] = pd.to_datetime(df["timestamp_ms"], unit="ms")
+        return df
 
     def run_at_timestamp(
         self,
@@ -393,7 +404,7 @@ class TradeBookKeeperAgent:
             float: total pnl
         """
 
-        mtm_array = np.array(self.mtm_history)
+        mtm_array = np.array(self.mtm_history_value)
         return mtm_array.sum()
 
     def _calculate_sharpe_ratio(self) -> tuple[float]:

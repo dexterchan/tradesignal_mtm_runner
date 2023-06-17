@@ -185,18 +185,23 @@ def test_tradesignal_long_with_roi(
         if len(trade_book_keeper_agent.outstanding_long_position_list) > 0:
             trade = trade_book_keeper_agent.outstanding_long_position_list[0]
             logger.debug(
-                f"{i} : {trade.is_closed} : {trade_book_keeper_agent.mtm_history[-1]} : {trade.calculate_pnl_normalized(test_mktdata['close'][i])} "
+                f"{i} : {trade.is_closed} : {trade_book_keeper_agent.mtm_history_value[-1]} : {trade.calculate_pnl_normalized(test_mktdata['close'][i])} "
             )
     # Check the result
     assert len(trade_book_keeper_agent.outstanding_long_position_list) == 0
     assert len(trade_book_keeper_agent.archive_long_positions_list) == 1
-    logger.debug(trade_book_keeper_agent.mtm_history)
+    logger.debug(trade_book_keeper_agent.mtm_history_value)
     logger.debug(pnl_config.roi)
     mtm = trade_book_keeper_agent.calculate_pnl_from_mtm_history()
     assert (
         abs(mtm - expect_mtm) < COMPARE_ERROR
     ), f"mtm {mtm} != expected_mtm{expect_mtm}"
-    assert len(test_mktdata) == len(trade_book_keeper_agent.mtm_history)
+    assert len(test_mktdata) == len(trade_book_keeper_agent.mtm_history_value)
+
+    mtm_history_df: pd.DataFrame = trade_book_keeper_agent.mtm_history_panda_df
+    assert len(mtm_history_df) == len(test_mktdata)
+    mtm_history_reward_df = mtm_history_df[abs(mtm_history_df["mtm"]) > 0]
+    assert len(mtm_history_reward_df) == end_trade_inx - start_trade_inx + 1
     pass
 
 
@@ -513,7 +518,7 @@ def test_tradesignal_short_with_long_positions(
     logger.debug(f"first trade pnl:{pnl_first} : {first_trade}")
     logger.debug(f"second trade pnl:{pnl_second} : {second_trade} ")
 
-    logger.debug(trade_book_keeper_agent.mtm_history)
+    logger.debug(trade_book_keeper_agent.mtm_history_value)
     assert abs(total_pnl - total_pnl_expected) < COMPARE_ERROR
 
 
@@ -711,7 +716,7 @@ def test_tradesignal_flat_mkt_data_with_short_position_plus_fee(
     logger.debug(f"first trade pnl:{pnl_first} : {first_trade}")
     logger.debug(f"second trade pnl:{pnl_second} : {second_trade} ")
 
-    logger.debug(trade_book_keeper_agent.mtm_history)
+    logger.debug(trade_book_keeper_agent.mtm_history_value)
     assert (
         abs(total_pnl - total_pnl_expected) < COMPARE_ERROR
     ), f"total_pnl:{total_pnl}, total_pnl_expected {total_pnl_expected}"

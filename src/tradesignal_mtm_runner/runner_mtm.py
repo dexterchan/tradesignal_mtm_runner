@@ -13,6 +13,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class Trade_Mtm_Runner(ITradeSignalRunner):
     """Accept buy/sell signal from Strategy
     buy/sell signal should be coupled with market data from panda dataframe
@@ -23,7 +24,7 @@ class Trade_Mtm_Runner(ITradeSignalRunner):
 
     mtm runner will generate pnl time series
     for each time record, up to t,  do the following:
-    1) calculate the mtm based on the position 
+    1) calculate the mtm based on the position
     2) apply buy/sell signals -> update the trade position
     3) check if stop loss/profit required -> if yes, close the trade and update trade position
     Finally, we can conclude the Pnl by adding up all the mtm
@@ -39,6 +40,7 @@ class Trade_Mtm_Runner(ITradeSignalRunner):
     max_pnl = max(max_pnl, cum_mtm[t])
     max_drawdown = max(max_drawdown, max_pnl - cum_mtm[t])
     """
+
     def __init__(
         self,
         pnl_config: PnlCalcConfig,
@@ -66,7 +68,6 @@ class Trade_Mtm_Runner(ITradeSignalRunner):
         self.trade_order_simulator_map: dict[str, TradeBookKeeperAgent] = {}
         pass
 
-    
     def calculate(
         self,
         symbol: str,
@@ -85,18 +86,21 @@ class Trade_Mtm_Runner(ITradeSignalRunner):
         """
         _signal_dataframe: pd.DataFrame = self._prepare_df_for_analysis(
             buy_signal_dataframe=buy_signal_dataframe,
-            sell_signal_dataframe=sell_signal_dataframe
+            sell_signal_dataframe=sell_signal_dataframe,
         )
-        
+
         return self._iterate_each_timeframe(
             symbol=symbol, signal_dataframe=_signal_dataframe
         )
 
-    def _prepare_df_for_analysis(self,buy_signal_dataframe: pd.DataFrame,
-        sell_signal_dataframe: pd.DataFrame, ) -> pd.DataFrame:
+    def _prepare_df_for_analysis(
+        self,
+        buy_signal_dataframe: pd.DataFrame,
+        sell_signal_dataframe: pd.DataFrame,
+    ) -> pd.DataFrame:
         """
         Prepare the dataframe for analysis
-    
+
 
         Args:
             buy_signal_dataframe (pd.DataFrame): buy data frame "close price", "buy" column
@@ -111,7 +115,9 @@ class Trade_Mtm_Runner(ITradeSignalRunner):
 
         return _signal_dataframe
 
-    def _iterate_each_timeframe(self, symbol:str, signal_dataframe:pd.DataFrame) -> Mtm_Result:
+    def _iterate_each_timeframe(
+        self, symbol: str, signal_dataframe: pd.DataFrame
+    ) -> Mtm_Result:
         """_summary_
 
         Args:
@@ -135,19 +141,17 @@ class Trade_Mtm_Runner(ITradeSignalRunner):
             "close_price": close_price.tolist(),
         }
 
-        
         max_pnl: float = 0
         max_drawdown: float = 0
 
-        _trade_order_agent:TradeBookKeeperAgent = TradeBookKeeperAgent(
+        _trade_order_agent: TradeBookKeeperAgent = TradeBookKeeperAgent(
             symbol=symbol, pnl_config=self.pnl_config, fixed_unit=True
         )
-        
+
         self.trade_order_simulator_map[symbol] = _trade_order_agent
 
         for i in range(len(signal_dataframe)):
-
-            buy_sell_signal:Buy_Sell_Action_Enum = Buy_Sell_Action_Enum.HOLD
+            buy_sell_signal: Buy_Sell_Action_Enum = Buy_Sell_Action_Enum.HOLD
 
             if buy_signal[i] == 1:
                 buy_sell_signal = Buy_Sell_Action_Enum.BUY
@@ -161,19 +165,21 @@ class Trade_Mtm_Runner(ITradeSignalRunner):
                 buy_sell_action=buy_sell_signal,
             )
 
-            pnl_cum_at_this_moment:float = _trade_order_agent.calculate_pnl_from_mtm_history()
+            pnl_cum_at_this_moment: float = (
+                _trade_order_agent.calculate_pnl_from_mtm_history()
+            )
             max_pnl = max(max_pnl, pnl_cum_at_this_moment)
             max_drawdown = max(max_drawdown, max_pnl - pnl_cum_at_this_moment)
             pnl_ts_data["pnl_ratio"][i] = pnl_cum_at_this_moment
 
         # Summarize the pnl result
-        pnl_ts_data["mtm_ratio"] = _trade_order_agent.mtm_history
-        
+        pnl_ts_data["mtm_ratio"] = _trade_order_agent.mtm_history_value
+
         _df = pd.DataFrame.from_dict(data=pnl_ts_data)
         _df.set_index("timestamp", drop=True, inplace=True)
         sharpe_ratio = _trade_order_agent._calculate_sharpe_ratio()
         _df["timestamp"] = (pd.to_numeric(_df.index) / 1000000).astype("int64")
-        
+
         data_in_dict: dict = _df.to_dict(orient="list")
 
         mtm_result: Mtm_Result = Mtm_Result(
@@ -182,22 +188,25 @@ class Trade_Mtm_Runner(ITradeSignalRunner):
             pnl_timeline=data_in_dict,
             sharpe_ratio=sharpe_ratio,
         )
-        mtm_result.long_trades_archive.extend(_trade_order_agent.archive_long_positions_list)
+        mtm_result.long_trades_archive.extend(
+            _trade_order_agent.archive_long_positions_list
+        )
         mtm_result.long_trades_outstanding.extend(
             _trade_order_agent.outstanding_long_position_list
         )
 
-        mtm_result.short_trades_archive.extend(_trade_order_agent.archive_short_positions_list)
+        mtm_result.short_trades_archive.extend(
+            _trade_order_agent.archive_short_positions_list
+        )
         mtm_result.short_trades_oustanding.extend(
             _trade_order_agent.outstanding_short_position_list
         )
         return mtm_result
 
-    
+
 class HyperOptPnlCalculator_Adapter(ITradeSignalRunner):
     def __init__(self, calculator: ITradeSignalRunner) -> None:
         self._calculator: ITradeSignalRunner = calculator
-
 
     def calculate(
         self,
@@ -215,7 +224,7 @@ class HyperOptPnlCalculator_Adapter(ITradeSignalRunner):
         Returns:
             Mtm_Result: [description]
         """
-        mtm_result:Mtm_Result = self._calculator.calculate(
+        mtm_result: Mtm_Result = self._calculator.calculate(
             symbol=symbol,
             buy_signal_dataframe=buy_signal_dataframe,
             sell_signal_dataframe=sell_signal_dataframe,
