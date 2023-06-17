@@ -10,7 +10,7 @@ from tradesignal_mtm_runner.models import (
 import numpy as np
 import pandas as pd
 
-DATA_DIM_MIN = 10 * 2
+DATA_DIM_MIN = 1000
 DATA_MOVEMENT = 100
 COMPARE_ERROR = 0.1
 from datetime import datetime, timedelta
@@ -139,7 +139,9 @@ def test_tradesignal_short_no_roi_no_stoploss(
 @pytest.mark.skipif(
     "tradesignal_long_with_roi" not in test_cases, reason="Not implemented yet"
 )
-def test_tradesignal_long_with_roi(get_test_ascending_mkt_data) -> None:
+def test_tradesignal_long_with_roi(
+    get_test_ascending_mkt_data, get_test_pnl_calc_config
+) -> None:
     """simple testing of long signal with roi
 
     Args:
@@ -148,14 +150,19 @@ def test_tradesignal_long_with_roi(get_test_ascending_mkt_data) -> None:
     test_mktdata: pd.DataFrame = get_test_ascending_mkt_data(
         dim=DATA_DIM_MIN, step=DATA_MOVEMENT
     )
-    print(test_mktdata)
-    pnl_config = PnlCalcConfig.get_default()
-    inx: int = int(DATA_DIM_MIN / 4)
+    close_price: pd.Series = test_mktdata["close"]
 
-    pnl_length: int = int(DATA_DIM_MIN / 5)
+    pnl_config = get_test_pnl_calc_config()
+    start_trade_inx: int = int(DATA_DIM_MIN / 4)
 
-    pnl_config.roi = {inx: ((pnl_length) * DATA_MOVEMENT) / test_mktdata["close"][0]}
-    expect_mtm: float = (pnl_length + 1) * DATA_MOVEMENT / test_mktdata["close"][inx]
+    end_trade_inx: int = int(DATA_DIM_MIN / 5) + start_trade_inx
+    # ((pnl_length) * DATA_MOVEMENT)
+
+    expect_mtm: float = (
+        close_price[end_trade_inx] - close_price[start_trade_inx]
+    ) / close_price[start_trade_inx]
+
+    pnl_config.roi = {end_trade_inx: expect_mtm}
 
     trade_book_keeper_agent: TradeBookKeeperAgent = TradeBookKeeperAgent(
         pnl_config=pnl_config,
@@ -165,7 +172,9 @@ def test_tradesignal_long_with_roi(get_test_ascending_mkt_data) -> None:
     # Run through the market data
     for i in range(len(test_mktdata)):
         action: Buy_Sell_Action_Enum = (
-            Buy_Sell_Action_Enum.BUY if i == inx else Buy_Sell_Action_Enum.HOLD
+            Buy_Sell_Action_Enum.BUY
+            if i == start_trade_inx
+            else Buy_Sell_Action_Enum.HOLD
         )
         trade_book_keeper_agent.run_at_timestamp(
             dt=test_mktdata.index[i],
@@ -175,16 +184,18 @@ def test_tradesignal_long_with_roi(get_test_ascending_mkt_data) -> None:
         )
         if len(trade_book_keeper_agent.outstanding_long_position_list) > 0:
             trade = trade_book_keeper_agent.outstanding_long_position_list[0]
-            logger.info(
+            logger.debug(
                 f"{i} : {trade.is_closed} : {trade_book_keeper_agent.mtm_history[-1]} : {trade.calculate_pnl_normalized(test_mktdata['close'][i])} "
             )
     # Check the result
     assert len(trade_book_keeper_agent.outstanding_long_position_list) == 0
     assert len(trade_book_keeper_agent.archive_long_positions_list) == 1
-    logger.info(trade_book_keeper_agent.mtm_history)
-    logger.info(pnl_config.roi)
+    logger.debug(trade_book_keeper_agent.mtm_history)
+    logger.debug(pnl_config.roi)
     mtm = trade_book_keeper_agent.calculate_pnl_from_mtm_history()
-    assert abs(mtm - expect_mtm) < DATA_MOVEMENT * 2 / test_mktdata["close"][0]
+    assert (
+        abs(mtm - expect_mtm) < COMPARE_ERROR
+    ), f"mtm {mtm} != expected_mtm{expect_mtm}"
     assert len(test_mktdata) == len(trade_book_keeper_agent.mtm_history)
     pass
 
@@ -203,16 +214,18 @@ def test_tradesignal_short_with_roi(
     test_mktdata: pd.DataFrame = get_test_descending_mkt_data(
         dim=DATA_DIM_MIN, step=DATA_MOVEMENT
     )
-    print(test_mktdata)
+    close_price: pd.Series = test_mktdata["close"]
     pnl_config = get_test_pnl_calc_config(enable_short_position=True)
-    inx: int = int(DATA_DIM_MIN / 4)
+    start_trade_inx: int = int(DATA_DIM_MIN / 4)
+    end_trade_inx: int = int(DATA_DIM_MIN / 5) + start_trade_inx
 
-    pnl_length: int = int(DATA_DIM_MIN / 5)
+    expect_mtm: float = (
+        close_price[start_trade_inx] - close_price[end_trade_inx]
+    ) / close_price[start_trade_inx]
 
     pnl_config.roi = {
-        inx: ((pnl_length) * DATA_MOVEMENT + 1) / test_mktdata["close"][0]
+        end_trade_inx: expect_mtm,
     }
-    expect_mtm: float = (pnl_length) * DATA_MOVEMENT / test_mktdata["close"][inx]
 
     trade_book_keeper_agent: TradeBookKeeperAgent = TradeBookKeeperAgent(
         pnl_config=pnl_config,
@@ -222,7 +235,9 @@ def test_tradesignal_short_with_roi(
     # Run through the market data
     for i in range(len(test_mktdata)):
         action: Buy_Sell_Action_Enum = (
-            Buy_Sell_Action_Enum.SELL if i == inx else Buy_Sell_Action_Enum.HOLD
+            Buy_Sell_Action_Enum.SELL
+            if i == start_trade_inx
+            else Buy_Sell_Action_Enum.HOLD
         )
         trade_book_keeper_agent.run_at_timestamp(
             dt=test_mktdata.index[i],
@@ -236,7 +251,7 @@ def test_tradesignal_short_with_roi(
     # logger.info(trade_book_keeper_agent.mtm_history)
     # logger.info(pnl_config.roi)
     mtm = trade_book_keeper_agent.calculate_pnl_from_mtm_history()
-    assert abs(mtm - expect_mtm) < DATA_MOVEMENT / test_mktdata["close"][inx]
+    assert abs(mtm - expect_mtm) < COMPARE_ERROR
 
     pass
 
@@ -535,7 +550,87 @@ def test_tradesignal_flat_mkt_data_with_disable_short_positions(
     assert len(trade_book_keeper_agent.archive_long_positions_list) == 0
 
 
-def test_tradesignal_flat_mkt_data_with_long_positions_plus_fee(
+def test_tradesignal_ascending_mkt_data_with_long_positions(
+    get_test_ascending_mkt_data, get_test_pnl_calc_config
+) -> None:
+    test_mktdata: pd.DataFrame = get_test_ascending_mkt_data(dim=DATA_DIM_MIN)
+    test_fee_rate: float = 0.1
+    pnl_config: PnlCalcConfig = get_test_pnl_calc_config(
+        enable_short_position=True, fee_rate=test_fee_rate
+    )
+    pnl_config.max_position_per_symbol = 10
+    first_long: int = int(DATA_DIM_MIN / 5)
+    first_short: int = first_long + int(DATA_DIM_MIN / 5)
+    second_long: int = first_short + int(DATA_DIM_MIN / 5)
+
+    trade_book_keeper_agent: TradeBookKeeperAgent = TradeBookKeeperAgent(
+        pnl_config=pnl_config, symbol=test_symbol
+    )
+
+    expected_pnl_1 = (
+        test_mktdata["close"][first_short] - test_mktdata["close"][first_long]
+    ) / test_mktdata["close"][first_long] - test_fee_rate * 2
+    expected_pnl_2 = (
+        test_mktdata["close"][-1] - test_mktdata["close"][second_long]
+    ) / test_mktdata["close"][second_long] - test_fee_rate
+
+    # Run through the market data
+    action: Buy_Sell_Action_Enum = Buy_Sell_Action_Enum.HOLD
+    for i in range(len(test_mktdata)):
+        if i in (first_long, second_long):
+            action = Buy_Sell_Action_Enum.BUY
+        elif i in (first_short,):
+            action = Buy_Sell_Action_Enum.SELL
+        else:
+            action = Buy_Sell_Action_Enum.HOLD
+
+        trade_book_keeper_agent.run_at_timestamp(
+            dt=test_mktdata.index[i],
+            price=test_mktdata["close"][i],
+            price_diff=test_mktdata["price_movement"][i],
+            buy_sell_action=action,
+        )
+
+    # Check the result
+    # 1) Check position
+    assert len(trade_book_keeper_agent.outstanding_short_position_list) == 0
+    assert len(trade_book_keeper_agent.outstanding_long_position_list) == 1
+    assert len(trade_book_keeper_agent.archive_short_positions_list) == 0
+    assert len(trade_book_keeper_agent.archive_long_positions_list) == 1
+
+    # 2) check trades
+    first_trade = trade_book_keeper_agent.archive_long_positions_list[0]
+    second_trade = trade_book_keeper_agent.outstanding_long_position_list[0]
+
+    assert first_trade.entry_datetime == test_mktdata.index[first_long]
+    assert first_trade.exit_datetime == test_mktdata.index[first_short]
+    assert second_trade.entry_datetime == test_mktdata.index[second_long]
+
+    # 3) check pnl
+    pnl_first: float = first_trade.calculate_pnl_normalized(
+        price=first_trade.exit_price, fee_included=True
+    )
+    pnl_second: float = second_trade.calculate_pnl_normalized(
+        price=test_mktdata["close"][-1], fee_included=True
+    )
+
+    assert (
+        abs(pnl_first - expected_pnl_1) < COMPARE_ERROR
+    ), f"pnl_first:{pnl_first}, expected_pnl_1:{expected_pnl_1}"
+
+    assert (
+        abs(pnl_second - expected_pnl_2) < COMPARE_ERROR
+    ), f"{second_trade}, last mkt price: {test_mktdata['close'][-1]}, pnl_second:{pnl_second}, expected_pnl_2:{expected_pnl_2}"
+
+    # 4) check trade book history
+    total_pnl = trade_book_keeper_agent.calculate_pnl_from_mtm_history()
+    assert (
+        abs(total_pnl - (pnl_first + pnl_second)) < COMPARE_ERROR
+    ), f"total_pnl:{total_pnl}, pnl_first:{pnl_first}, pnl_second:{pnl_second}"
+    pass
+
+
+def test_tradesignal_flat_mkt_data_with_short_position_plus_fee(
     get_test_flat_mkt_data, get_test_pnl_calc_config
 ) -> None:
     test_mktdata: pd.DataFrame = get_test_flat_mkt_data(dim=DATA_DIM_MIN)
@@ -543,9 +638,6 @@ def test_tradesignal_flat_mkt_data_with_long_positions_plus_fee(
     pnl_config: PnlCalcConfig = get_test_pnl_calc_config(
         enable_short_position=True, fee_rate=test_fee_rate
     )
-
-    logger.critical(f"pnl_config: {pnl_config}")
-
     pnl_config.max_position_per_symbol = 10
     first_short: int = int(DATA_DIM_MIN / 5)
     second_short: int = first_short + int(DATA_DIM_MIN / 5)
