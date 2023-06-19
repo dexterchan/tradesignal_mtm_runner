@@ -1,6 +1,7 @@
 from __future__ import annotations
 from pydantic import BaseModel, Field, validator
 
+
 class PnlCalcConfig(BaseModel):
     """_summary_
         roi - Return On Investment (ROI):
@@ -19,6 +20,8 @@ class PnlCalcConfig(BaseModel):
         fixed_stake_unit_amount - notional of each trade
         enable_short_position - enable short position
         max_position_per_symbol - number of open position per symbol
+        fee_rate - fee rate of each trade
+        laid_back_tax - tax rate of not holding any positions at time t
 
     Args:
         BaseModel (_type_): _description_
@@ -33,10 +36,11 @@ class PnlCalcConfig(BaseModel):
     enable_short_position: bool = False
     max_position_per_symbol: int = 1
     fee_rate: float = 0
+    laid_back_tax: float = 0.0001
 
     @classmethod
     def get_default(cls) -> PnlCalcConfig:
-        return cls(roi={"0": float("inf")}, stoploss=float("-inf"))
+        return cls(roi={"0": float("inf")}, stoploss=float("-inf"), laid_back_tax=0)
 
     @validator("max_position_per_symbol")
     def max_position_per_symbol_validation(cls, v):

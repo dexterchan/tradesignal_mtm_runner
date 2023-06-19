@@ -56,6 +56,7 @@ class TradeBookKeeperAgent:
         self.inventory_mode = Inventory_Mode.FIFO
         self.PROFIT_SLIPPAGE: float = 0.000001
         self.fee_rate_from_pnl_config: float = pnl_config.fee_rate
+        self.laid_back_tax: float = pnl_config.laid_back_tax
         pass
 
     @property
@@ -157,11 +158,23 @@ class TradeBookKeeperAgent:
                 archive_long_positions=self.archive_long_positions_list,
             )
 
-        # 5. Adjust MTM with fee rate
+        # 5. Adjust with laid back tax
+        accumulated_fee += self._check_if_laid_back_tax()
+
+        # 6. Adjust MTM with fee rate
         # Store the final mtm values
         self._mtm_history["mtm"].append(mtm_at_time_t - accumulated_fee)
 
         pass
+
+    def _check_if_laid_back_tax(self) -> float:
+        """Check if we need to pay laid back tax"""
+        if (
+            len(self.outstanding_long_position_list) == 0
+            and len(self.outstanding_short_position_list) == 0
+        ):
+            return abs(self.laid_back_tax)
+        return 0
 
     def _check_if_roi_close_position(
         self,
@@ -196,7 +209,7 @@ class TradeBookKeeperAgent:
                     live_positions=live_positions,
                     close_reason=Proxy_Trade_Actions.ROI,
                 )
-                accum_fee += trade.fee_normalized
+                accum_fee += abs(trade.fee_normalized)
                 logger.debug(f"Close trade with ROI:{trade}")
 
         return accum_fee
@@ -237,7 +250,7 @@ class TradeBookKeeperAgent:
                     live_positions=live_positions,
                     close_reason=Proxy_Trade_Actions.STOP_LOSS,
                 )
-                accum_fee += trade.fee_normalized
+                accum_fee += abs(trade.fee_normalized)
 
         return accum_fee
 
@@ -283,7 +296,7 @@ class TradeBookKeeperAgent:
                 live_positions=live_short_positions,
                 close_reason=Proxy_Trade_Actions.SIGNAL,
             )
-            return trade.fee_normalized
+            return abs(trade.fee_normalized)
 
         # 4. Open a new position
         trade = ProxyTrade(
@@ -297,7 +310,7 @@ class TradeBookKeeperAgent:
         )
         live_long_positions.append(trade)
 
-        return trade.fee_normalized
+        return abs(trade.fee_normalized)
 
     def _check_if_open_sell_position(
         self,
@@ -343,7 +356,7 @@ class TradeBookKeeperAgent:
                 close_reason=Proxy_Trade_Actions.SIGNAL,
             )
 
-            return trade.fee_normalized
+            return abs(trade.fee_normalized)
 
         # 4. Open a new position
         if not self.enable_short_position:
@@ -362,7 +375,7 @@ class TradeBookKeeperAgent:
         )
         live_short_positions.append(trade)
 
-        return trade.fee_normalized
+        return abs(trade.fee_normalized)
 
     def _get_trade_to_close(self, long_short: LongShort_Enum) -> ProxyTrade:
         """Get the trade to close

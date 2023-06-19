@@ -84,21 +84,15 @@ def get_test_flat_mkt_data() -> pd.DataFrame:
 @pytest.fixture
 def get_test_pnl_calc_config() -> PnlCalcConfig:
     def _get_config(
-        enable_short_position: bool = True, fee_rate: float = 0
+        enable_short_position: bool = True,
+        fee_rate: float = 0,
+        laid_back_tax: float = 0,
     ) -> PnlCalcConfig:
         pnl_calc_config: PnlCalcConfig = PnlCalcConfig.get_default()
         pnl_calc_config.enable_short_position = enable_short_position
         pnl_calc_config.fee_rate = fee_rate
+        pnl_calc_config.laid_back_tax = laid_back_tax
 
         return pnl_calc_config
 
     return _get_config
-
-
-# @pytest.fixture
-# # Generate a PnlCalcConfig with fee=0.1
-# def get_test_pnl_calc_config() -> PnlCalcConfig:
-#     pnl_calc_config: PnlCalcConfig = PnlCalcConfig.get_default()
-#     pnl_calc_config.fee_rate = 0.1
-
-#     return pnl_calc_config
