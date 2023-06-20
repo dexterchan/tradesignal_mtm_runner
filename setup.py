@@ -48,6 +48,6 @@ setup(
     test_suite='tests',
     tests_require=test_requirements,
     url='https://github.com/dexterchan/tradesignal_mtm_runner',
-    version='0.2.3',
+    version='0.3.0',
     zip_safe=False,
 )

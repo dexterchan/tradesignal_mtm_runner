@@ -1,6 +1,6 @@
 package:
   name: "tradesignal_mtm_runner"
-  version: '0.2.3'
+  version: 'version='0.3.0''
 about:
   summary: "This is an trade signal pnl/mtm calculation Python library"
 source:
