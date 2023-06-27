@@ -420,7 +420,7 @@ class TradeBookKeeperAgent:
         mtm_array = np.array(self.mtm_history_value)
         return mtm_array.sum()
 
-    def _calculate_sharpe_ratio(self) -> tuple[float]:
+    def calculate_sharpe_ratio(self) -> tuple[float]:
         """Calculate sharpe ratio
         Args:
             pnl_ts_data (pd.Dataframe): index: timestamp, column: pnl_ratio

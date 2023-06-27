@@ -438,7 +438,7 @@ def test_tradesignal_long_with_short_positions(get_test_ascending_mkt_data) -> N
     assert abs(total_pnl_expected - total_pnl) < COMPARE_ERROR
 
     _pnl: float = trade_book_keeper_agent.calculate_pnl_from_mtm_history()
-    _sharpe_ratio: float = trade_book_keeper_agent._calculate_sharpe_ratio()
+    _sharpe_ratio: float = trade_book_keeper_agent.calculate_sharpe_ratio()
     logger.debug(f"Pnl: {_pnl} Sharpe Ratio: {_sharpe_ratio}")
 
 

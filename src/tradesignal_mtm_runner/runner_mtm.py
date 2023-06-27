@@ -177,7 +177,7 @@ class Trade_Mtm_Runner(ITradeSignalRunner):
 
         _df = pd.DataFrame.from_dict(data=pnl_ts_data)
         _df.set_index("timestamp", drop=True, inplace=True)
-        sharpe_ratio = _trade_order_agent._calculate_sharpe_ratio()
+        sharpe_ratio = _trade_order_agent.calculate_sharpe_ratio()
         _df["timestamp"] = (pd.to_numeric(_df.index) / 1000000).astype("int64")
 
         data_in_dict: dict = _df.to_dict(orient="list")
